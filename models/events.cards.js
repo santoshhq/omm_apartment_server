@@ -4,7 +4,10 @@ const { Schema } = mongoose;
 
 const eventCardSchema = new Schema(
   {
-    image: { type: [String] ,default:[]}, // store URL or filename
+   imagePaths: {
+      type: [String], // Multiple image URLs/paths
+      default: [],    // Empty if no images uploaded
+    }, // store URL or filename
     name: { type: String, required: true, trim: true },
     startdate: { type: Date, required: true },
     enddate: { type: Date, required: true },

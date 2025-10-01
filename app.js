@@ -44,6 +44,7 @@ app.use(`${API_PREFIX}/amenities`, amenitiesRouter);
 const eventRouter = require('./routers/events.cards.routers');
 app.use(`${API_PREFIX}/events`, eventRouter);
 
-
+const announRouter = require('./routers/announs.cards.routers');
+app.use(`${API_PREFIX}/announcements`, announRouter);
 
 module.exports=app;
