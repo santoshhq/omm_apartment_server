@@ -1,5 +1,6 @@
 const Messages = require('../../models/complaintssection/messages');
 const Complaints = require('../../models/complaintssection/complaints');
+const AdminMemberProfile = require('../../models/auth.models/adminMemberProfile');
 
 class MessageService {
 
@@ -127,16 +128,62 @@ class MessageService {
                 };
             }
 
+            // Get messages without population first
             const messages = await Messages.find({ complaintId })
-                .populate('senderId', 'firstName lastName email flatNo')
                 .sort({ timestamp: 1 });
 
-            const formattedMessages = messages.map(msg => ({
-                id: msg._id,
-                complaintId: msg.complaintId,
-                senderId: msg.senderId,
-                message: msg.message,
-                timestamp: msg.timestamp
+            console.log(`📊 Found ${messages.length} messages for complaint ${complaintId}`);
+
+            // Manually populate sender details for each message
+            const formattedMessages = await Promise.all(messages.map(async (msg) => {
+                let senderInfo = {
+                    _id: msg.senderId,
+                    firstName: 'Unknown',
+                    lastName: 'User',
+                    email: null,
+                    flatNo: null
+                };
+
+                try {
+                    // Try to find sender in AdminMemberProfile first
+                    const memberProfile = await AdminMemberProfile.findById(msg.senderId);
+                    if (memberProfile) {
+                        senderInfo = {
+                            _id: memberProfile._id,
+                            firstName: memberProfile.firstName,
+                            lastName: memberProfile.lastName,
+                            email: memberProfile.email,
+                            flatNo: memberProfile.flatNo
+                        };
+                        console.log(`👤 Found member: ${memberProfile.firstName} ${memberProfile.lastName}`);
+                    } else {
+                        // If not found in AdminMemberProfile, try adminSignup
+                        const AdminSignup = require('../../models/auth.models/adminSignup');
+                        const adminProfile = await AdminSignup.findById(msg.senderId);
+                        if (adminProfile) {
+                            senderInfo = {
+                                _id: adminProfile._id,
+                                firstName: adminProfile.firstName || 'Admin',
+                                lastName: adminProfile.lastName || 'User',
+                                email: adminProfile.email,
+                                flatNo: 'N/A'
+                            };
+                            console.log(`👨‍💼 Found admin: ${adminProfile.firstName || 'Admin'} ${adminProfile.lastName || 'User'}`);
+                        } else {
+                            console.log(`⚠️  Sender not found in any collection: ${msg.senderId}`);
+                        }
+                    }
+                } catch (error) {
+                    console.log(`❌ Error fetching sender details: ${error.message}`);
+                }
+
+                return {
+                    id: msg._id,
+                    complaintId: msg.complaintId,
+                    senderId: senderInfo,
+                    message: msg.message,
+                    timestamp: msg.timestamp
+                };
             }));
 
             console.log('✅ Found', messages.length, 'messages');

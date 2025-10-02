@@ -3,7 +3,7 @@ const Messages = require('../../models/complaintssection/messages');
 
 class ComplaintController {
 
-    // Create new complaint
+    // Create new complaint - Auto-fetch user details
     static async createComplaint(req, res) {
         try {
             console.log('\n=== 📝 CREATE COMPLAINT CONTROLLER CALLED ===');
@@ -11,7 +11,7 @@ class ComplaintController {
 
             const { userId, createdByadmin, title, description } = req.body;
 
-            // Basic validation
+            // Basic validation - name and flatNo are auto-fetched
             if (!userId || !createdByadmin || !title || !description) {
                 return res.status(400).json({
                     success: false,
@@ -205,6 +205,36 @@ class ComplaintController {
 
         } catch (error) {
             console.log('❌ ERROR in getComplaintsByStatus controller:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: error.message
+            });
+        }
+    }
+
+    // Delete complaint and associated messages
+    static async deleteComplaint(req, res) {
+        try {
+            console.log('\n=== 🗑️ DELETE COMPLAINT CONTROLLER CALLED ===');
+            console.log('🆔 Complaint ID:', req.params.id);
+
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Complaint ID is required'
+                });
+            }
+
+            const result = await ComplaintService.deleteComplaint(id);
+
+            const statusCode = result.success ? 200 : 400;
+            return res.status(statusCode).json(result);
+
+        } catch (error) {
+            console.log('❌ ERROR in deleteComplaint controller:', error.message);
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',

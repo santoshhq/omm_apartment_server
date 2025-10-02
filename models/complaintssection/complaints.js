@@ -9,6 +9,20 @@ const complaintsSchema = new Schema({
         ref: 'AdminMemberProfile', // Reference to the user collection
         required: [true, 'User ID is required']
     },
+    name: { 
+        type: String, 
+        required: [true, 'Name is required'],
+        trim: true,
+        maxlength: [100, 'Name cannot exceed 100 characters'],
+        minlength: [2, 'Name must be at least 2 characters']
+    },
+    flatNo: { 
+        type: String, 
+        required: [true, 'Flat number is required'],
+        trim: true,
+        maxlength: [10, 'Flat number cannot exceed 10 characters'],
+        minlength: [1, 'Flat number must be at least 1 character']
+    },
     title: { 
         type: String, 
         required: [true, 'Title is required'],
