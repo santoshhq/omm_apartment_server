@@ -47,4 +47,11 @@ app.use(`${API_PREFIX}/events`, eventRouter);
 const announRouter = require('./routers/announs.cards.routers');
 app.use(`${API_PREFIX}/announcements`, announRouter);
 
+const complaintRouter = require('./routers/complaintssection/complaints.routers');
+app.use(`${API_PREFIX}/complaints`, complaintRouter);
+
+const messageRouter = require('./routers/complaintssection/messages.routers');
+app.use(`${API_PREFIX}/messages`, messageRouter);
+
+
 module.exports=app;
