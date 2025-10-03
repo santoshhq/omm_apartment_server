@@ -9,19 +9,20 @@ class ComplaintController {
             console.log('\n=== 📝 CREATE COMPLAINT CONTROLLER CALLED ===');
             console.log('📄 Request Body:', req.body);
 
-            const { userId, createdByadmin, title, description } = req.body;
+            const { userId, isCreatedByAdmin = false, assignedToAdmin = null, title, description } = req.body;
 
             // Basic validation - name and flatNo are auto-fetched
-            if (!userId || !createdByadmin || !title || !description) {
+            if (!userId || !title || !description) {
                 return res.status(400).json({
-                    success: false,
-                    message: 'Missing required fields: userId, createdByadmin, title, description'
+                    success: false,  
+                    message: 'Missing required fields: userId, title, description'
                 });
             }
 
             const result = await ComplaintService.createComplaint({
                 userId,
-                createdByadmin,
+                isCreatedByAdmin,
+                assignedToAdmin,
                 title,
                 description
             });

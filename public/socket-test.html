@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Messaging Test - Socket.io</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .connected { background: rgba(0, 255, 0, 0.2); }
+        .disconnected { background: rgba(255, 0, 0, 0.2); }
+        .join-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .messaging-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        input, textarea, button {
+            margin: 8px 0;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .messages {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .message.own {
+            background: rgba(0, 123, 255, 0.2);
+            margin-left: 20%;
+        }
+        .message.other {
+            background: rgba(255, 193, 7, 0.2);
+            margin-right: 20%;
+        }
+        .message-header {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        .typing-indicator {
+            font-style: italic;
+            opacity: 0.7;
+            margin: 10px 0;
+        }
+        .online-users {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .user-badge {
+            display: inline-block;
+            background: rgba(0, 255, 0, 0.3);
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Real-time Messaging Test</h1>
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div class="join-section">
+            <h3>📝 Join Complaint Room</h3>
+            <input type="text" id="complaintId" placeholder="Enter Complaint ID (e.g., 68de681c0fd024156c0b7b4c)" value="68de681c0fd024156c0b7b4c">
+            <input type="text" id="userId" placeholder="Enter Your User ID">
+            <input type="text" id="userName" placeholder="Enter Your Name">
+            <input type="text" id="userRole" placeholder="Enter Your Role (member/admin)" value="member">
+            <button onclick="joinRoom()">Join Room</button>
+        </div>
+
+        <div class="messaging-section">
+            <h3>💬 Send Message</h3>
+            <textarea id="messageInput" placeholder="Type your message here..." rows="3"></textarea>
+            <button onclick="sendMessage()" id="sendBtn" disabled>Send Message</button>
+            <div id="typingIndicator" class="typing-indicator"></div>
+        </div>
+
+        <div class="messages">
+            <h3>📨 Messages</h3>
+            <div id="messagesList"></div>
+        </div>
+
+        <div class="online-users">
+            <h3>🟢 Online Users</h3>
+            <div id="onlineUsersList">No users online</div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let currentUserId = null;
+        let typingTimer = null;
+
+        // Connection status
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = 'Connected ✅';
+            document.getElementById('status').className = 'status connected';
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').textContent = 'Disconnected ❌';
+            document.getElementById('status').className = 'status disconnected';
+        });
+
+        // Join complaint room
+        function joinRoom() {
+            const complaintId = document.getElementById('complaintId').value.trim();
+            const userId = document.getElementById('userId').value.trim();
+            const userName = document.getElementById('userName').value.trim();
+            const userRole = document.getElementById('userRole').value.trim();
+
+            if (!complaintId || !userId || !userName || !userRole) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            currentRoom = complaintId;
+            currentUserId = userId;
+
+            socket.emit('join-complaint', {
+                complaintId,
+                userId,
+                name: userName,
+                role: userRole
+            });
+
+            document.getElementById('sendBtn').disabled = false;
+            addSystemMessage(`Joined complaint room: ${complaintId}`);
+        }
+
+        // Send message
+        function sendMessage() {
+            const message = document.getElementById('messageInput').value.trim();
+            
+            if (!message || !currentRoom || !currentUserId) {
+                alert('Please join a room first and enter a message');
+                return;
+            }
+
+            // Send via API
+            fetch('/api/complaints/messages/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    complaintId: currentRoom,
+                    senderId: currentUserId,
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('messageInput').value = '';
+                    // Message will appear via Socket.io event
+                } else {
+                    alert('Error sending message: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error sending message');
+            });
+        }
+
+        // Typing indicator
+        document.getElementById('messageInput').addEventListener('input', () => {
+            if (currentRoom) {
+                socket.emit('typing', { complaintId: currentRoom });
+                
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => {
+                    socket.emit('stop-typing', { complaintId: currentRoom });
+                }, 2000);
+            }
+        });
+
+        // Socket.io event listeners
+        socket.on('new-message', (data) => {
+            console.log('📨 New message received:', data);
+            addMessage(data, false);
+        });
+
+        socket.on('user-joined', (data) => {
+            addSystemMessage(`${data.name} joined the conversation`);
+            updateOnlineUsers(data.onlineUsers);
+        });
+
+        socket.on('user-left', (data) => {
+            addSystemMessage(`${data.name} left the conversation`);
+            updateOnlineUsers(data.onlineUsers);
+        });
+
+        socket.on('user-typing', (data) => {
+            if (data.userId !== currentUserId) {
+                document.getElementById('typingIndicator').textContent = `${data.name} is typing...`;
+            }
+        });
+
+        socket.on('user-stopped-typing', () => {
+            document.getElementById('typingIndicator').textContent = '';
+        });
+
+        socket.on('online-users-update', (users) => {
+            updateOnlineUsers(users);
+        });
+
+        // Helper functions
+        function addMessage(data, isOwn = false) {
+            const messagesList = document.getElementById('messagesList');
+            const messageDiv = document.createElement('div');
+            
+            const senderName = data.senderId?.firstName ? 
+                `${data.senderId.firstName} ${data.senderId.lastName || ''}` : 
+                'Unknown User';
+            
+            messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    👤 ${senderName} • ${new Date(data.createdAt || Date.now()).toLocaleTimeString()}
+                </div>
+                <div>${data.message}</div>
+            `;
+            
+            messagesList.appendChild(messageDiv);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        function addSystemMessage(message) {
+            const messagesList = document.getElementById('messagesList');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.style.background = 'rgba(128, 128, 128, 0.2)';
+            messageDiv.innerHTML = `
+                <div style="text-align: center; font-style: italic;">
+                    🔔 ${message}
+                </div>
+            `;
+            messagesList.appendChild(messageDiv);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        function updateOnlineUsers(users) {
+            const onlineUsersList = document.getElementById('onlineUsersList');
+            
+            if (!users || users.length === 0) {
+                onlineUsersList.innerHTML = 'No users online';
+                return;
+            }
+
+            onlineUsersList.innerHTML = users.map(user => 
+                `<span class="user-badge">${user.name} (${user.role})</span>`
+            ).join('');
+        }
+
+        // Enter key to send message
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

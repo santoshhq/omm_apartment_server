@@ -51,35 +51,73 @@ class MessageService {
                 console.log('⚠️  Sender ID not found in AdminMemberProfile collection:', senderId);
             }
 
-            // Emit real-time message if Socket.io is available
+            // Enhanced real-time message broadcasting
             if (io) {
-                console.log('🔍 Debug - msg.senderId type:', typeof msg.senderId);
-                console.log('🔍 Debug - msg.senderId value:', msg.senderId);
+                console.log('� Preparing real-time message broadcast...');
                 
-                // Check if senderId is populated (has firstName property) or just an ObjectId
-                const isPopulated = msg.senderId && msg.senderId.firstName;
-                
-                const realTimeData = {
-                    id: msg._id,
-                    complaintId: msg.complaintId,
-                    senderId: isPopulated ? {
-                        _id: msg.senderId._id,
-                        firstName: msg.senderId.firstName,
-                        lastName: msg.senderId.lastName,
-                        flatNo: msg.senderId.flatNo
-                    } : {
-                        _id: msg.senderId || messageData.senderId,
-                        firstName: 'Unknown',
-                        lastName: 'User',
-                        flatNo: 'N/A'
-                    },
-                    message: msg.message,
-                    timestamp: msg.timestamp,
-                    createdAt: msg.createdAt
+                // Get proper sender details for real-time broadcast
+                let senderDetails = {
+                    _id: messageData.senderId,
+                    firstName: 'Unknown',
+                    lastName: 'User',
+                    flatNo: 'N/A',
+                    userType: 'unknown'
                 };
 
-                console.log('🔌 Emitting real-time message to room:', complaintId);
-                io.to(complaintId.toString()).emit('message_received', realTimeData);
+                try {
+                    // Try to find sender details for better real-time display
+                    const senderProfile = await AdminMemberProfile.findById(messageData.senderId);
+                    if (senderProfile) {
+                        senderDetails = {
+                            _id: senderProfile._id,
+                            firstName: senderProfile.firstName,
+                            lastName: senderProfile.lastName,
+                            email: senderProfile.email,
+                            flatNo: senderProfile.flatNo,
+                            userType: 'member'
+                        };
+                    } else {
+                        // Try admin collection
+                        const AdminSignup = require('../../models/auth.models/signup');
+                        const adminProfile = await AdminSignup.findById(messageData.senderId);
+                        if (adminProfile) {
+                            senderDetails = {
+                                _id: adminProfile._id,
+                                firstName: adminProfile.firstName || 'Admin',
+                                lastName: adminProfile.lastName || 'User',
+                                email: adminProfile.email,
+                                flatNo: 'N/A',
+                                userType: 'admin'
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.log('⚠️  Could not fetch sender details for real-time:', error.message);
+                }
+
+                const realTimeMessageData = {
+                    id: msg._id,
+                    complaintId: msg.complaintId,
+                    senderId: senderDetails,
+                    message: msg.message,
+                    timestamp: msg.timestamp,
+                    createdAt: msg.createdAt,
+                    messageType: 'text',
+                    deliveryStatus: 'sent'
+                };
+
+                console.log(`🔌 Broadcasting message to room: ${complaintId}`);
+                console.log(`👤 Sender: ${senderDetails.firstName} ${senderDetails.lastName} (${senderDetails.userType})`);
+                
+                // Emit to all users in the complaint room
+                io.to(complaintId.toString()).emit('new-message', realTimeMessageData);
+                
+                // Also emit with the old event name for backward compatibility
+                io.to(complaintId.toString()).emit('message_received', realTimeMessageData);
+                
+                console.log('✅ Real-time message broadcasted successfully');
+            } else {
+                console.log('⚠️  Socket.io not available for real-time messaging');
             }
 
             console.log('✅ Message sent successfully');
@@ -157,8 +195,8 @@ class MessageService {
                         };
                         console.log(`👤 Found member: ${memberProfile.firstName} ${memberProfile.lastName}`);
                     } else {
-                        // If not found in AdminMemberProfile, try adminSignup
-                        const AdminSignup = require('../../models/auth.models/adminSignup');
+                        // If not found in AdminMemberProfile, try signup (admin) collection
+                        const AdminSignup = require('../../models/auth.models/signup');
                         const adminProfile = await AdminSignup.findById(msg.senderId);
                         if (adminProfile) {
                             senderInfo = {

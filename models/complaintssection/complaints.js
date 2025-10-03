@@ -45,19 +45,26 @@ const complaintsSchema = new Schema({
         }, 
         default: 'pending' 
     },
-    createdByadmin: { 
+    assignedToAdmin: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'adminSignup', 
-        required: [true, 'Admin ID is required']
+        required: false,  // Will be assigned later by system
+        default: null
+    },
+    isCreatedByAdmin: {
+        type: Boolean,
+        default: false,
+        required: [true, 'Creation type is required']
     }
 }, { 
     timestamps: true 
 });
 
 // Indexes for better performance
-complaintsSchema.index({ createdByadmin: 1, createdAt: -1 });
+complaintsSchema.index({ assignedToAdmin: 1, createdAt: -1 });
 complaintsSchema.index({ userId: 1, createdAt: -1 });
 complaintsSchema.index({ status: 1, createdAt: -1 });
+complaintsSchema.index({ isCreatedByAdmin: 1, createdAt: -1 });
 
 const Complaints = db.model('Complaints', complaintsSchema);
 module.exports = Complaints;

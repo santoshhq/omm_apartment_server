@@ -5,18 +5,19 @@ const Messages = require('../../models/complaintssection/messages');
 class ComplaintService {
 
     // Create a new complaint - Auto-fetch user details
-    static async createComplaint({ userId, createdByadmin, title, description }) {
+    static async createComplaint({ userId, isCreatedByAdmin = false, assignedToAdmin = null, title, description }) {
         try {
             console.log('\n=== 📝 CREATE COMPLAINT SERVICE CALLED ===');
             console.log('👤 User ID:', userId);
-            console.log('🔑 Admin ID:', createdByadmin);
+            console.log('� Created By Admin:', isCreatedByAdmin);
+            console.log('👨‍💼 Assigned To Admin:', assignedToAdmin || 'Auto-assign later');
             console.log('📋 Title:', title);
 
             // Validate required fields
-            if (!userId || !createdByadmin || !title || !description) {
+            if (!userId || !title || !description) {
                 return {
                     success: false,
-                    message: 'Missing required fields: userId, createdByadmin, title, description'
+                    message: 'Missing required fields: userId, title, description'
                 };
             }
 
@@ -46,10 +47,29 @@ class ComplaintService {
                 };
             }
 
+            // Auto-assign to an admin if not specified
+            let finalAssignedAdmin = assignedToAdmin;
+            if (!assignedToAdmin) {
+                console.log('🔄 Auto-assigning complaint to available admin...');
+                try {
+                    const AdminSignup = require('../../models/auth.models/signup');
+                    const availableAdmin = await AdminSignup.findOne({}).sort({ createdAt: 1 }); // Get first available admin
+                    if (availableAdmin) {
+                        finalAssignedAdmin = availableAdmin._id;
+                        console.log('✅ Auto-assigned to admin:', availableAdmin._id);
+                    } else {
+                        console.log('⚠️  No admin available for auto-assignment');
+                    }
+                } catch (adminError) {
+                    console.log('⚠️  Could not auto-assign admin:', adminError.message);
+                }
+            }
+
             // Create complaint with auto-fetched user details
             const complaintData = {
                 userId,
-                createdByadmin,
+                assignedToAdmin: finalAssignedAdmin,  // Can be null if no admin available
+                isCreatedByAdmin,
                 name: userProfile.firstName + (userProfile.lastName ? ' ' + userProfile.lastName : ''),
                 flatNo: userProfile.flatNo,
                 title: title.trim(),
@@ -94,7 +114,7 @@ class ComplaintService {
 
             const complaints = await Complaints.find()
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('createdByadmin', 'firstName lastName email mobile')
+                .populate('assignedToAdmin', 'firstName lastName email mobile')
                 .sort({ createdAt: -1 });
 
             console.log('📊 Total complaints found:', complaints.length);
@@ -131,14 +151,14 @@ class ComplaintService {
             }
 
             // Build query
-            const query = { createdByadmin: adminId };
+            const query = { assignedToAdmin: adminId };
             if (status) {
                 query.status = status;
             }
 
             const complaints = await Complaints.find(query)
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('createdByadmin', 'firstName lastName email mobile')
+                .populate('assignedToAdmin', 'firstName lastName email mobile')
                 .sort({ createdAt: -1 });
 
             console.log('📊 Total complaints found for admin:', complaints.length);
@@ -177,7 +197,7 @@ class ComplaintService {
             }
 
             // Build query
-            const query = { createdByadmin: adminId };
+            const query = { assignedToAdmin: adminId };
             
             // Apply status filter if provided
             if (filters.status) {
@@ -186,7 +206,7 @@ class ComplaintService {
 
             const complaints = await Complaints.find(query)
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('createdByadmin', 'firstName lastName email mobile')
+                .populate('assignedToAdmin', 'firstName lastName email mobile')
                 .sort({ createdAt: -1 });
 
             console.log('📊 Total complaints found for admin:', complaints.length);
@@ -223,7 +243,7 @@ class ComplaintService {
 
             const complaint = await Complaints.findById(id)
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('createdByadmin', 'firstName lastName email mobile');
+                .populate('assignedToAdmin', 'firstName lastName email mobile');
 
             if (!complaint) {
                 return {
@@ -274,7 +294,7 @@ class ComplaintService {
                 { ...cleanUpdateData, updatedAt: new Date() },
                 { new: true, runValidators: true }
             ).populate('userId', 'firstName lastName email mobile')
-             .populate('createdByadmin', 'firstName lastName email mobile');
+             .populate('assignedToAdmin', 'firstName lastName email mobile');
 
             if (!updatedComplaint) {
                 return {
@@ -385,7 +405,7 @@ class ComplaintService {
 
             const complaints = await Complaints.find({ status })
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('createdByadmin', 'firstName lastName email mobile')
+                .populate('assignedToAdmin', 'firstName lastName email mobile')
                 .sort({ createdAt: -1 });
 
             console.log(`📊 Total complaints with status '${status}':`, complaints.length);
@@ -422,7 +442,7 @@ class ComplaintService {
 
             const complaints = await Complaints.find({ userId })
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('createdByadmin', 'firstName lastName email mobile')
+                .populate('assignedToAdmin', 'firstName lastName email mobile')
                 .sort({ createdAt: -1 });
 
             console.log('📊 Total complaints by user:', complaints.length);
@@ -481,7 +501,7 @@ class ComplaintService {
                 updateData,
                 { new: true, runValidators: true }
             ).populate('userId', 'firstName lastName email mobile')
-             .populate('createdByadmin', 'firstName lastName email mobile');
+             .populate('assignedToAdmin', 'firstName lastName email mobile');
 
             if (!updatedComplaint) {
                 return {

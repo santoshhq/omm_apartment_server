@@ -20,42 +20,137 @@ const io = socketIo(server, {
 // Make io accessible to the app
 app.set('io', io);
 
-// Socket.io connection handling
+// Track online users per complaint
+const onlineUsers = new Map(); // complaintId -> Set of user objects
+
+// Socket.io connection handling with enhanced real-time messaging
 io.on('connection', (socket) => {
     console.log('🔌 User connected:', socket.id);
+    
+    // Store user info on socket for easy access
+    socket.userInfo = null;
+    socket.currentComplaintId = null;
 
-    // Join complaint room for real-time messaging
-    socket.on('join-complaint', (complaintId) => {
-        socket.join(complaintId);
-        console.log(`👥 User ${socket.id} joined complaint room: ${complaintId}`);
+    // Enhanced join complaint room with user tracking
+    socket.on('join-complaint', (data) => {
+        const { complaintId, userId, userType, userName } = data;
         
-        // Notify others in the room
+        // Leave previous room if any
+        if (socket.currentComplaintId) {
+            socket.leave(socket.currentComplaintId);
+            removeUserFromComplaint(socket.currentComplaintId, socket.id);
+        }
+        
+        // Join new room
+        socket.join(complaintId);
+        socket.currentComplaintId = complaintId;
+        socket.userInfo = { userId, userType, userName, socketId: socket.id };
+        
+        // Track online users
+        if (!onlineUsers.has(complaintId)) {
+            onlineUsers.set(complaintId, new Set());
+        }
+        onlineUsers.get(complaintId).add(socket.userInfo);
+        
+        console.log(`👥 User ${userName} (${userType}) joined complaint room: ${complaintId}`);
+        
+        // Notify others in the room with user details
         socket.to(complaintId).emit('user-joined', {
-            message: 'A user joined the conversation',
+            userId: userId,
+            userName: userName,
+            userType: userType,
+            message: `${userName} joined the conversation`,
+            timestamp: new Date(),
+            onlineCount: onlineUsers.get(complaintId).size
+        });
+        
+        // Send online users list to the new user
+        const onlineUsersList = Array.from(onlineUsers.get(complaintId) || []);
+        socket.emit('online-users-updated', {
+            onlineUsers: onlineUsersList,
+            count: onlineUsersList.length
+        });
+    });
+
+    // Enhanced typing indicators with user details
+    socket.on('typing', (data) => {
+        if (socket.currentComplaintId && socket.userInfo) {
+            socket.to(socket.currentComplaintId).emit('user-typing', {
+                userId: socket.userInfo.userId,
+                userName: socket.userInfo.userName,
+                userType: socket.userInfo.userType,
+                isTyping: true,
+                timestamp: new Date()
+            });
+        }
+    });
+
+    socket.on('stop-typing', (data) => {
+        if (socket.currentComplaintId && socket.userInfo) {
+            socket.to(socket.currentComplaintId).emit('user-typing', {
+                userId: socket.userInfo.userId,
+                userName: socket.userInfo.userName,
+                userType: socket.userInfo.userType,
+                isTyping: false,
+                timestamp: new Date()
+            });
+        }
+    });
+
+    // Handle message delivery confirmation
+    socket.on('message-delivered', (data) => {
+        const { messageId, complaintId } = data;
+        socket.to(complaintId).emit('message-delivery-confirmed', {
+            messageId: messageId,
+            deliveredBy: socket.userInfo?.userId,
             timestamp: new Date()
         });
     });
 
-    // Handle typing indicators
-    socket.on('typing', (data) => {
-        socket.to(data.complaintId).emit('typing', {
-            senderId: data.senderId,
-            isTyping: true
+    // Handle message read confirmation
+    socket.on('message-read', (data) => {
+        const { messageId, complaintId } = data;
+        socket.to(complaintId).emit('message-read-confirmed', {
+            messageId: messageId,
+            readBy: socket.userInfo?.userId,
+            timestamp: new Date()
         });
     });
 
-    socket.on('stop-typing', (data) => {
-        socket.to(data.complaintId).emit('typing', {
-            senderId: data.senderId,
-            isTyping: false
-        });
-    });
-
-    // Handle disconnect
+    // Handle disconnect with cleanup
     socket.on('disconnect', () => {
         console.log('❌ User disconnected:', socket.id);
+        
+        if (socket.currentComplaintId && socket.userInfo) {
+            // Remove user from online tracking
+            removeUserFromComplaint(socket.currentComplaintId, socket.id);
+            
+            // Notify others about user leaving
+            socket.to(socket.currentComplaintId).emit('user-left', {
+                userId: socket.userInfo.userId,
+                userName: socket.userInfo.userName,
+                userType: socket.userInfo.userType,
+                message: `${socket.userInfo.userName} left the conversation`,
+                timestamp: new Date(),
+                onlineCount: onlineUsers.get(socket.currentComplaintId)?.size || 0
+            });
+        }
     });
 });
+
+// Helper function to remove user from complaint tracking
+function removeUserFromComplaint(complaintId, socketId) {
+    if (onlineUsers.has(complaintId)) {
+        const users = onlineUsers.get(complaintId);
+        const userToRemove = Array.from(users).find(user => user.socketId === socketId);
+        if (userToRemove) {
+            users.delete(userToRemove);
+            if (users.size === 0) {
+                onlineUsers.delete(complaintId);
+            }
+        }
+    }
+}
 
 app.get('/', (req, res) => {
     res.send('Hello World! Socket.io is running.');
