@@ -18,6 +18,8 @@ const createAmenity = async (req, res) => {
       name,
       description,
       capacity,
+      bookingType,
+      weeklySchedule,
       imagePaths,
       location,
       hourlyRate,
@@ -26,10 +28,10 @@ const createAmenity = async (req, res) => {
     } = req.body;
 
     // Validation
-    if (!adminId || !name || !description || !capacity) {
+    if (!adminId || !name || !description || !capacity || !bookingType || !weeklySchedule) {
       return res.status(400).json({
         success: false,
-        message: 'AdminId, name, description, and capacity are required'
+        message: 'AdminId, name, description, capacity, bookingType, and weeklySchedule are required'
       });
     }
 
@@ -78,6 +80,8 @@ const createAmenity = async (req, res) => {
       name,
       description,
       capacity: parseInt(capacity),
+      bookingType,
+      weeklySchedule,
       imagePaths: imagePaths || [],
       location: location || '',
       hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,

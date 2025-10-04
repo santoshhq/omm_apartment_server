@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { addingamenity } = require('../models/adding.amenities');
+const { Amenity } = require('../models/adding.amenities');
 const Signup = require('../models/auth.models/signup');
 
 // Environment variables
@@ -12,15 +12,23 @@ const createAmenityService = async (adminId, amenityData) => {
   try {
     console.log('\n=== 🏢 CREATE AMENITY SERVICE CALLED ===');
     console.log('🔑 Admin ID:', adminId);
+    console.log('📦 FULL AMENITY DATA RECEIVED:');
+    console.log(JSON.stringify(amenityData, null, 2));
+    console.log('\n🔍 INDIVIDUAL FIELD CHECK:');
     console.log('🏢 Amenity Name:', amenityData.name);
     console.log('📝 Description:', amenityData.description);
     console.log('👥 Capacity:', amenityData.capacity);
+    console.log('🎯 Booking Type:', amenityData.bookingType);
+    console.log('📅 Weekly Schedule:', !!amenityData.weeklySchedule);
+    console.log('📅 Schedule Keys:', amenityData.weeklySchedule ? Object.keys(amenityData.weeklySchedule) : 'undefined');
     console.log('💰 Hourly Rate:', amenityData.hourlyRate || DEFAULT_HOURLY_RATE);
     console.log('📍 Location:', amenityData.location || 'Not specified');
     console.log('🖼️ Images:', amenityData.imagePaths?.length || 0);
     console.log('✨ Features:', amenityData.features?.length || 0);
 
     // Validate admin exists and is verified
+    console.log('🔍 Checking admin with ID:', adminId);
+    
     const admin = await Signup.findOne({
       _id: adminId,
       isVerified: true
@@ -33,15 +41,40 @@ const createAmenityService = async (adminId, amenityData) => {
         message: 'Admin not found or not verified'
       };
     }
-
+    
     console.log('✅ Admin verified:', admin.email);
 
     // Validate required fields
-    if (!amenityData.name || !amenityData.description || !amenityData.capacity) {
-      console.log('❌ MISSING REQUIRED FIELDS');
+    const requiredFields = ['name', 'description', 'capacity', 'bookingType', 'weeklySchedule'];
+    const missingFields = requiredFields.filter(field => !amenityData[field]);
+    
+    if (missingFields.length > 0) {
+      console.log('❌ MISSING REQUIRED FIELDS:', missingFields);
       return {
         success: false,
-        message: 'Name, description, and capacity are required fields'
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      };
+    }
+
+    // Validate bookingType
+    if (!['shared', 'exclusive'].includes(amenityData.bookingType)) {
+      console.log('❌ INVALID BOOKING TYPE:', amenityData.bookingType);
+      return {
+        success: false,
+        message: 'Booking type must be either "shared" or "exclusive"'
+      };
+    }
+
+    // Validate weeklySchedule
+    const requiredDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const scheduleDays = Object.keys(amenityData.weeklySchedule || {});
+    const missingDays = requiredDays.filter(day => !scheduleDays.includes(day));
+    
+    if (missingDays.length > 0) {
+      console.log('❌ MISSING SCHEDULE DAYS:', missingDays);
+      return {
+        success: false,
+        message: `Weekly schedule must include all days. Missing: ${missingDays.join(', ')}`
       };
     }
 
@@ -73,7 +106,7 @@ const createAmenityService = async (adminId, amenityData) => {
     }
 
     // Check if amenity with same name already exists for this admin
-    const existingAmenity = await addingamenity.findOne({
+    const existingAmenity = await Amenity.findOne({
       createdByAdminId: adminId,
       name: { $regex: new RegExp(`^${amenityData.name}$`, 'i') }
     });
@@ -92,17 +125,25 @@ const createAmenityService = async (adminId, amenityData) => {
       : [];
 
     // Create amenity object
-    const newAmenity = new addingamenity({
+    console.log('🏗️ Creating Amenity with data:');
+    const amenityCreateData = {
       createdByAdminId: adminId,
       name: amenityData.name.trim(),
       description: amenityData.description.trim(),
       capacity: parseInt(amenityData.capacity),
+      bookingType: amenityData.bookingType,
+      weeklySchedule: amenityData.weeklySchedule,
       imagePaths: amenityData.imagePaths || [],
       location: amenityData.location ? amenityData.location.trim() : '',
       hourlyRate: amenityData.hourlyRate || DEFAULT_HOURLY_RATE,
       features: sanitizedFeatures,
       active: amenityData.active !== undefined ? amenityData.active : true
-    });
+    };
+    
+    console.log('📝 Final amenity creation data:');
+    console.log(JSON.stringify(amenityCreateData, null, 2));
+    
+    const newAmenity = new Amenity(amenityCreateData);
 
     // Save amenity
     const savedAmenity = await newAmenity.save();
@@ -174,7 +215,7 @@ const getAllAmenitiesService = async (adminId, filters = {}) => {
       ];
     }
 
-    const amenities = await addingamenity.find(query)
+    const amenities = await Amenity.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -218,7 +259,7 @@ const getAmenityByIdService = async (adminId, amenityId) => {
     console.log('🔑 Admin ID:', adminId);
     console.log('🏢 Amenity ID:', amenityId);
 
-    const amenity = await addingamenity.findOne({
+    const amenity = await Amenity.findOne({
       _id: amenityId,
       createdByAdminId: adminId
     }).lean();
@@ -272,7 +313,7 @@ const updateAmenityService = async (adminId, amenityId, updateData) => {
     console.log('📝 Update data:', Object.keys(updateData));
 
     // Find existing amenity
-    const existingAmenity = await addingamenity.findOne({
+    const existingAmenity = await Amenity.findOne({
       _id: amenityId,
       createdByAdminId: adminId
     });
@@ -316,7 +357,7 @@ const updateAmenityService = async (adminId, amenityId, updateData) => {
 
     // Check for duplicate name if name is being updated
     if (updateData.name && updateData.name !== existingAmenity.name) {
-      const duplicateAmenity = await addingamenity.findOne({
+      const duplicateAmenity = await Amenity.findOne({
         createdByAdminId: adminId,
         name: { $regex: new RegExp(`^${updateData.name}$`, 'i') },
         _id: { $ne: amenityId }
@@ -359,7 +400,7 @@ const updateAmenityService = async (adminId, amenityId, updateData) => {
     }
 
     // Update amenity
-    const updatedAmenity = await addingamenity.findOneAndUpdate(
+    const updatedAmenity = await Amenity.findOneAndUpdate(
       { _id: amenityId, createdByAdminId: adminId },
       updateObject,
       { new: true, runValidators: true }
@@ -409,7 +450,7 @@ const deleteAmenityService = async (adminId, amenityId, hardDelete = false) => {
     console.log('🏢 Amenity ID:', amenityId);
     console.log('💥 Hard Delete:', hardDelete);
 
-    const amenity = await addingamenity.findOne({
+    const amenity = await Amenity.findOne({
       _id: amenityId,
       createdByAdminId: adminId
     });
@@ -426,7 +467,7 @@ const deleteAmenityService = async (adminId, amenityId, hardDelete = false) => {
 
     if (hardDelete) {
       // Permanent deletion
-      await addingamenity.findOneAndDelete({
+      await Amenity.findOneAndDelete({
         _id: amenityId,
         createdByAdminId: adminId
       });
@@ -444,7 +485,7 @@ const deleteAmenityService = async (adminId, amenityId, hardDelete = false) => {
       };
     } else {
       // Soft delete (mark as inactive)
-      const updatedAmenity = await addingamenity.findOneAndUpdate(
+      const updatedAmenity = await Amenity.findOneAndUpdate(
         { _id: amenityId, createdByAdminId: adminId },
         { active: false },
         { new: true }
@@ -482,7 +523,7 @@ const toggleAmenityStatusService = async (adminId, amenityId) => {
     console.log('🔑 Admin ID:', adminId);
     console.log('🏢 Amenity ID:', amenityId);
 
-    const amenity = await addingamenity.findOne({
+    const amenity = await Amenity.findOne({
       _id: amenityId,
       createdByAdminId: adminId
     });
@@ -498,7 +539,7 @@ const toggleAmenityStatusService = async (adminId, amenityId) => {
     const newStatus = !amenity.active;
     console.log('🔄 Toggling status:', amenity.active, '→', newStatus);
 
-    const updatedAmenity = await addingamenity.findOneAndUpdate(
+    const updatedAmenity = await Amenity.findOneAndUpdate(
       { _id: amenityId, createdByAdminId: adminId },
       { active: newStatus },
       { new: true }
