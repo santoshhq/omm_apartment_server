@@ -395,7 +395,7 @@ class ComplaintService {
                 };
             }
 
-            const validStatuses = ['pending', 'sloved', 'unsolved'];
+            const validStatuses = ['pending', 'solved', 'unsolved'];
             if (!validStatuses.includes(status)) {
                 return {
                     success: false,
@@ -479,7 +479,7 @@ class ComplaintService {
                 };
             }
 
-            const validStatuses = ['pending', 'in-progress', 'resolved', 'closed'];
+            const validStatuses = ['pending', 'solved', 'unsolved'];
             if (!validStatuses.includes(status)) {
                 return {
                     success: false,

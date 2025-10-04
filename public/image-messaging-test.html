@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Messaging Test - Socket.io</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .connected { background: rgba(0, 255, 0, 0.2); }
+        .disconnected { background: rgba(255, 0, 0, 0.2); }
+        .join-section, .messaging-section, .image-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        input, textarea, button {
+            margin: 8px 0;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .image-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .image-upload:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .image-upload.dragover {
+            background: rgba(0, 255, 0, 0.2);
+            border-color: #4CAF50;
+        }
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .image-preview img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        .messages {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .message {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .message.own {
+            background: rgba(0, 123, 255, 0.2);
+            margin-left: 20%;
+        }
+        .message.other {
+            background: rgba(255, 193, 7, 0.2);
+            margin-right: 20%;
+        }
+        .message-header {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+        .message-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .message-images img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .message-images img:hover {
+            transform: scale(1.05);
+        }
+        .message-caption {
+            font-style: italic;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+        .upload-progress {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        .file-info {
+            font-size: 12px;
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Image Messaging Test</h1>
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div class="join-section">
+            <h3>📝 Join Complaint Room</h3>
+            <input type="text" id="complaintId" placeholder="Enter Complaint ID" value="68de681c0fd024156c0b7b4c">
+            <input type="text" id="userId" placeholder="Enter Your User ID">
+            <input type="text" id="userName" placeholder="Enter Your Name">
+            <input type="text" id="userRole" placeholder="Enter Your Role (member/admin)" value="member">
+            <button onclick="joinRoom()">Join Room</button>
+        </div>
+
+        <div class="messaging-section">
+            <h3>💬 Send Text Message</h3>
+            <textarea id="messageInput" placeholder="Type your message here..." rows="3"></textarea>
+            <button onclick="sendTextMessage()" id="sendTextBtn" disabled>Send Text Message</button>
+        </div>
+
+        <div class="image-section">
+            <h3>🖼️ Send Images</h3>
+            <div class="image-upload" id="imageUpload">
+                <p>📁 Click here or drag & drop images</p>
+                <p style="font-size: 12px; opacity: 0.7;">Max 5 images, 10MB each. Supports JPG, JPEG, PNG, GIF</p>
+            </div>
+            <input type="file" id="imageInput" multiple accept="image/*" style="display: none;">
+            <div id="imagePreview" class="image-preview"></div>
+            <textarea id="imageCaption" placeholder="Optional caption for images..." rows="2"></textarea>
+            <button onclick="sendImageMessage()" id="sendImageBtn" disabled>Send Images</button>
+            
+            <div id="uploadProgress" class="upload-progress">
+                <div class="file-info" id="fileInfo"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="progressText">0%</div>
+            </div>
+        </div>
+
+        <div class="messages">
+            <h3>📨 Messages</h3>
+            <div id="messagesList"></div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let currentUserId = null;
+        let selectedFiles = [];
+
+        // Connection status
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = 'Connected ✅';
+            document.getElementById('status').className = 'status connected';
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').textContent = 'Disconnected ❌';
+            document.getElementById('status').className = 'status disconnected';
+        });
+
+        // Image upload setup
+        const imageUpload = document.getElementById('imageUpload');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+
+        imageUpload.addEventListener('click', () => imageInput.click());
+        imageInput.addEventListener('change', handleFileSelect);
+
+        // Drag and drop
+        imageUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageUpload.classList.add('dragover');
+        });
+
+        imageUpload.addEventListener('dragleave', () => {
+            imageUpload.classList.remove('dragover');
+        });
+
+        imageUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageUpload.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+            handleFiles(files);
+        });
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length > 5) {
+                alert('Maximum 5 images allowed');
+                return;
+            }
+
+            selectedFiles = files;
+            displayImagePreviews(files);
+            document.getElementById('sendImageBtn').disabled = files.length === 0 || !currentRoom;
+        }
+
+        function displayImagePreviews(files) {
+            imagePreview.innerHTML = '';
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.title = `${file.name} (${Math.round(file.size/1024)}KB)`;
+                    imagePreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Join room
+        function joinRoom() {
+            const complaintId = document.getElementById('complaintId').value.trim();
+            const userId = document.getElementById('userId').value.trim();
+            const userName = document.getElementById('userName').value.trim();
+            const userRole = document.getElementById('userRole').value.trim();
+
+            if (!complaintId || !userId || !userName || !userRole) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            currentRoom = complaintId;
+            currentUserId = userId;
+
+            socket.emit('join-complaint', {
+                complaintId,
+                userId,
+                name: userName,
+                role: userRole
+            });
+
+            document.getElementById('sendTextBtn').disabled = false;
+            document.getElementById('sendImageBtn').disabled = selectedFiles.length === 0;
+            addSystemMessage(`Joined complaint room: ${complaintId}`);
+        }
+
+        // Send text message
+        function sendTextMessage() {
+            const message = document.getElementById('messageInput').value.trim();
+            
+            if (!message || !currentRoom || !currentUserId) {
+                alert('Please join a room first and enter a message');
+                return;
+            }
+
+            fetch('/api/complaints/messages/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    complaintId: currentRoom,
+                    senderId: currentUserId,
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('messageInput').value = '';
+                } else {
+                    alert('Error sending message: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error sending message');
+            });
+        }
+
+        // Send image message
+        function sendImageMessage() {
+            if (selectedFiles.length === 0 || !currentRoom || !currentUserId) {
+                alert('Please select images and join a room first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('complaintId', currentRoom);
+            formData.append('senderId', currentUserId);
+            formData.append('message', document.getElementById('imageCaption').value.trim());
+
+            selectedFiles.forEach((file, index) => {
+                formData.append('images', file);
+            });
+
+            // Show progress
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const fileInfo = document.getElementById('fileInfo');
+
+            progressDiv.style.display = 'block';
+            fileInfo.textContent = `Uploading ${selectedFiles.length} images...`;
+            document.getElementById('sendImageBtn').disabled = true;
+
+            fetch('/api/complaints/messages/send-images', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                progressDiv.style.display = 'none';
+                document.getElementById('sendImageBtn').disabled = false;
+
+                if (data.success) {
+                    selectedFiles = [];
+                    imagePreview.innerHTML = '';
+                    document.getElementById('imageCaption').value = '';
+                    document.getElementById('imageInput').value = '';
+                    document.getElementById('sendImageBtn').disabled = true;
+                    addSystemMessage('Images sent successfully!');
+                } else {
+                    alert('Error sending images: ' + data.message);
+                }
+            })
+            .catch(error => {
+                progressDiv.style.display = 'none';
+                document.getElementById('sendImageBtn').disabled = false;
+                console.error('Error:', error);
+                alert('Error sending images');
+            });
+        }
+
+        // Socket.io event listeners
+        socket.on('new-message', (data) => {
+            console.log('📨 New message received:', data);
+            addMessage(data, data.senderId._id === currentUserId);
+        });
+
+        socket.on('image_message_received', (data) => {
+            console.log('🖼️ Image message received:', data);
+            addMessage(data, data.senderId._id === currentUserId);
+        });
+
+        // Helper functions
+        function addMessage(data, isOwn = false) {
+            const messagesList = document.getElementById('messagesList');
+            const messageDiv = document.createElement('div');
+            
+            const senderName = data.senderId?.firstName ? 
+                `${data.senderId.firstName} ${data.senderId.lastName || ''}` : 
+                'Unknown User';
+            
+            messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+            
+            let messageContent = `
+                <div class="message-header">
+                    👤 ${senderName} • ${new Date(data.createdAt || Date.now()).toLocaleTimeString()}
+                    ${data.messageType === 'image' ? '📷' : '💬'}
+                </div>
+            `;
+
+            if (data.messageType === 'image') {
+                if (data.images && data.images.length > 0) {
+                    messageContent += '<div class="message-images">';
+                    data.images.forEach(img => {
+                        const imageUrl = `/uploads/images/compressed/${img.fileName}`;
+                        messageContent += `
+                            <img src="${imageUrl}" 
+                                 alt="${img.originalName}" 
+                                 title="${img.originalName} (${Math.round(img.compressedSize/1024)}KB, ${img.compressionRatio}% compressed)"
+                                 onclick="window.open('${imageUrl}', '_blank')">
+                        `;
+                    });
+                    messageContent += '</div>';
+                }
+                if (data.message) {
+                    messageContent += `<div class="message-caption">💬 ${data.message}</div>`;
+                }
+            } else {
+                messageContent += `<div>${data.message}</div>`;
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            messagesList.appendChild(messageDiv);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        function addSystemMessage(message) {
+            const messagesList = document.getElementById('messagesList');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.style.background = 'rgba(128, 128, 128, 0.2)';
+            messageDiv.innerHTML = `
+                <div style="text-align: center; font-style: italic;">
+                    🔔 ${message}
+                </div>
+            `;
+            messagesList.appendChild(messageDiv);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        // Enter key to send text message
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendTextMessage();
+            }
+        });
+    </script>
+</body>
+</html>
