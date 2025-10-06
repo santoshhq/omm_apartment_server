@@ -2,25 +2,31 @@ const express = require("express");
 const router = express.Router();
 const EventCardController = require("../controllers/events.cards.controllers");
 
-// Create
-router.post("/", EventCardController.createEventCard);
+// ===== ADMIN-SPECIFIC EVENT CARD ROUTES =====
 
-// Get all
-router.get("/", EventCardController.getAllEventCards);
+// Create Event Card for specific admin
+router.post("/admin/:adminId", EventCardController.createEventCard);
 
-// Get by ID
-router.get("/:id", EventCardController.getEventCardById);
+// Get all Event Cards for specific admin
+router.get("/admin/:adminId", EventCardController.getAllEventCards);
 
-// Update
-router.put("/:id", EventCardController.updateEventCard);
+// Get Event Card by ID (admin-specific)
+router.get("/admin/:adminId/event/:id", EventCardController.getEventCardById);
 
-// Delete
-router.delete("/:id", EventCardController.deleteEventCard);
+// Update Event Card (admin-specific)
+router.put("/admin/:adminId/event/:id", EventCardController.updateEventCard);
 
-// Add donation
-router.post("/:id/donate", EventCardController.addDonation);
+// Delete Event Card (admin-specific)
+router.delete("/admin/:adminId/event/:id", EventCardController.deleteEventCard);
 
-// Toggle status
-router.put("/:id/toggle", EventCardController.toggleEventStatus);
+// Toggle Event Status (admin-specific)
+router.put("/admin/:adminId/event/:id/toggle", EventCardController.toggleEventStatus);
+
+// Add donation to Event Card
+router.post("/admin/:adminId/event/:id/donate", EventCardController.addDonation);
+
+// ===== LEGACY ROUTES REMOVED FOR SECURITY =====
+// All routes now require admin-specific paths for better security
+// Frontend must use: /api/events/admin/:adminId instead of /api/events/
 
 module.exports = router;

@@ -2,20 +2,32 @@ const AnnounCardController = require('../controllers/announs.cards.controllers')
 const express = require('express');
 const router = express.Router();
 
-// ===== ANNOUNCEMENT CARDS ROUTES =====
+// ===== ADMIN-SPECIFIC ANNOUNCEMENT ROUTES =====
 
-// Basic CRUD Operations
-router.post('/', AnnounCardController.createAnnounCard);                    // Create new announcement
-router.get('/', AnnounCardController.getAllAnnounCards);                    // Get all announcements (with query filters)
-router.get('/:id', AnnounCardController.getAnnounCardById);                 // Get single announcement by ID
-router.put('/:id', AnnounCardController.updateAnnounCard);                  // Update announcement
-router.delete('/:id', AnnounCardController.deleteAnnounCard);               // Delete announcement
+// Create Announcement for specific admin
+router.post("/admin/:adminId", AnnounCardController.createAnnounCard);
 
-// Status Management
-router.put('/:id/toggle', AnnounCardController.toggleAnnounStatus);         // Toggle active/inactive status
+// Get all Announcements for specific admin
+router.get("/admin/:adminId", AnnounCardController.getAllAnnounCards);
 
-// Filter Operations
-router.get('/priority/:priority', AnnounCardController.getAnnouncementsByPriority); // Get by priority (High/Medium/Low)
+// Get Announcement by ID (admin-specific)
+router.get("/admin/:adminId/announcement/:id", AnnounCardController.getAnnounCardById);
+
+// Update Announcement (admin-specific)
+router.put("/admin/:adminId/announcement/:id", AnnounCardController.updateAnnounCard);
+
+// Delete Announcement (admin-specific)
+router.delete("/admin/:adminId/announcement/:id", AnnounCardController.deleteAnnounCard);
+
+// Toggle Announcement Status (admin-specific)
+router.put("/admin/:adminId/announcement/:id/toggle", AnnounCardController.toggleAnnounStatus);
+
+// Get by priority (admin-specific)
+router.get("/admin/:adminId/priority/:priority", AnnounCardController.getAnnouncementsByPriority);
+
+// ===== LEGACY ROUTES REMOVED FOR SECURITY =====
+// All routes now require admin-specific paths for better security
+// Frontend must use: /api/announcements/admin/:adminId instead of /api/announcements/
 
 // Route Documentation:
 // GET    /api/announcements                    - Get all announcements (query: ?activeOnly=true&adminId=xxx&priority=High)

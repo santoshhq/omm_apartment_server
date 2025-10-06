@@ -77,9 +77,17 @@ class EventCardService {
   }
 
   // Get All Event Cards
-  static async getAllEventCards() {
+  static async getAllEventCards(adminId = null) {
     try {
-      const eventCards = await eventCard.find().populate('adminId', 'firstName lastName email');
+      console.log('\n=== 📋 GET ALL EVENT CARDS SERVICE CALLED ===');
+      console.log('🔑 Admin ID filter:', adminId);
+      
+      // Build query - if adminId provided, filter by it, otherwise get all
+      const query = adminId ? { adminId } : {};
+      console.log('🔍 Query:', query);
+      
+      const eventCards = await eventCard.find(query).populate('adminId', 'firstName lastName email');
+      console.log('✅ Found event cards:', eventCards.length);
       
       // Format response with consistent image handling
       const formattedCards = eventCards.map(card => ({
@@ -278,15 +286,43 @@ class EventCardService {
   }
 
   // Delete Event Card
-  static async deleteEventCard(cardId) {
+  static async deleteEventCard(adminId, cardId) {
     try {
-      const deletedCard = await eventCard.findByIdAndDelete(cardId);
+      console.log('\n=== 🗑️ DELETE EVENT CARD SERVICE CALLED ===');
+      console.log('🔑 Admin ID:', adminId);
+      console.log('🎪 Card ID:', cardId);
+
+      const deletedCard = await eventCard.findOneAndDelete({
+        _id: cardId,
+        adminId: adminId
+      });
+
       if (!deletedCard) {
-        return { success: false, message: 'Event card not found' };
+        console.log('❌ EVENT CARD NOT FOUND OR ACCESS DENIED');
+        return { 
+          success: false, 
+          message: 'Event card not found or access denied' 
+        };
       }
-      return { success: true, message: 'Event card deleted successfully' };
+
+      console.log('✅ EVENT CARD DELETED SUCCESSFULLY');
+      console.log('🗑️ Deleted event:', deletedCard.name);
+
+      return { 
+        success: true, 
+        message: 'Event card deleted successfully',
+        data: {
+          deletedId: cardId,
+          deletedName: deletedCard.name
+        }
+      };
     } catch (error) {
-      return { success: false, message: 'Error deleting event card', error: error.message };
+      console.log('❌ ERROR in deleteEventCard:', error.message);
+      return { 
+        success: false, 
+        message: 'Error deleting event card', 
+        error: error.message 
+      };
     }
   }
 
@@ -312,19 +348,50 @@ class EventCardService {
   }
 
   // Toggle Event Status (Active/Inactive)
-  static async toggleEventStatus(cardId) {
+  static async toggleEventStatus(adminId, cardId) {
     try {
-      const card = await eventCard.findById(cardId);
+      console.log('\n=== 🔄 TOGGLE EVENT STATUS SERVICE CALLED ===');
+      console.log('🔑 Admin ID:', adminId);
+      console.log('🎪 Card ID:', cardId);
+
+      const card = await eventCard.findOne({
+        _id: cardId,
+        adminId: adminId
+      });
+
       if (!card) {
-        return { success: false, message: 'Event card not found' };
+        console.log('❌ EVENT CARD NOT FOUND OR ACCESS DENIED');
+        return { 
+          success: false, 
+          message: 'Event card not found or access denied' 
+        };
       }
+
+      console.log('✅ Event found:', card.name);
+      console.log('🔄 Current status:', card.status);
 
       card.status = !card.status;
       await card.save();
 
-      return { success: true, message: 'Event status updated', status: card.status };
+      console.log('✅ EVENT STATUS TOGGLED');
+      console.log('🔄 New status:', card.status);
+
+      return { 
+        success: true, 
+        message: 'Event status updated', 
+        data: {
+          id: card._id,
+          name: card.name,
+          status: card.status
+        }
+      };
     } catch (error) {
-      return { success: false, message: 'Error toggling status', error: error.message };
+      console.log('❌ ERROR in toggleEventStatus:', error.message);
+      return { 
+        success: false, 
+        message: 'Error toggling status', 
+        error: error.message 
+      };
     }
   }
 }

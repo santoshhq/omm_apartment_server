@@ -38,12 +38,28 @@ class AnnounCardController {
         }
     }
 
-    // Get all announcement cards
+    // Get all announcement cards (Admin-Specific)
     static async getAllAnnounCards(req, res) {  
         try {
             console.log('\n=== 📋 GET ALL ANNOUNCEMENTS CONTROLLER CALLED ===');
             
-            const { activeOnly, adminId, priority } = req.query;
+            // Get adminId from params (for new admin-specific routes) or query (for legacy)
+            const adminIdFromParams = req.params.adminId;
+            const { activeOnly, adminId: adminIdFromQuery, priority } = req.query;
+            
+            // Use adminId from params if available, otherwise from query (backward compatibility)
+            const adminId = adminIdFromParams || adminIdFromQuery;
+            
+            console.log('🔑 Admin ID (from params):', adminIdFromParams);
+            console.log('🔑 Admin ID (from query):', adminIdFromQuery);
+            console.log('🔑 Final Admin ID used:', adminId);
+
+            if (adminIdFromParams && !adminId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Admin ID is required'
+                });
+            }
             
             const result = await AnnounCardService.getAllAnnounCards({
                 isActive: activeOnly === 'true' ? true : undefined,
@@ -56,6 +72,32 @@ class AnnounCardController {
 
         } catch (error) {
             console.log('❌ ERROR in getAllAnnounCards controller:', error.message);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Internal server error', 
+                error: error.message 
+            });
+        }
+    }
+
+    // Get all announcement cards (Legacy - shows all announcements)
+    static async getAllAnnounCardsLegacy(req, res) {  
+        try {
+            console.log('\n⚠️ LEGACY GET ALL ANNOUNCEMENTS - SHOWING ALL ANNOUNCEMENTS FROM ALL ADMINS');
+            
+            const { activeOnly, priority } = req.query;
+            
+            const result = await AnnounCardService.getAllAnnounCards({
+                isActive: activeOnly === 'true' ? true : undefined,
+                // No adminId filter - shows all announcements
+                priority
+            });
+
+            const statusCode = result.success ? 200 : 400;
+            return res.status(statusCode).json(result);
+
+        } catch (error) {
+            console.log('❌ ERROR in getAllAnnounCardsLegacy controller:', error.message);
             return res.status(500).json({ 
                 success: false, 
                 message: 'Internal server error', 

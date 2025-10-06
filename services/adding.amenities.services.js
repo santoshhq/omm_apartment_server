@@ -231,6 +231,8 @@ const getAllAmenitiesService = async (adminId, filters = {}) => {
           name: amenity.name,
           description: amenity.description,
           capacity: amenity.capacity,
+          bookingType: amenity.bookingType,
+          weeklySchedule: amenity.weeklySchedule,
           location: amenity.location,
           hourlyRate: amenity.hourlyRate,
           images: amenity.imagePaths,
@@ -310,7 +312,15 @@ const updateAmenityService = async (adminId, amenityId, updateData) => {
     console.log('\n=== ✏️ UPDATE AMENITY SERVICE CALLED ===');
     console.log('🔑 Admin ID:', adminId);
     console.log('🏢 Amenity ID:', amenityId);
-    console.log('📝 Update data:', Object.keys(updateData));
+    console.log('📝 Update data keys:', Object.keys(updateData));
+    console.log('📦 FULL UPDATE DATA:');
+    console.log(JSON.stringify(updateData, null, 2));
+    
+    // Special logging for weeklySchedule
+    if (updateData.weeklySchedule) {
+      console.log('📅 Weekly Schedule Update:');
+      console.log(JSON.stringify(updateData.weeklySchedule, null, 2));
+    }
 
     // Find existing amenity
     const existingAmenity = await Amenity.findOne({
@@ -374,7 +384,7 @@ const updateAmenityService = async (adminId, amenityId, updateData) => {
 
     // Prepare update object
     const updateObject = {};
-    const allowedFields = ['name', 'description', 'capacity', 'location', 'hourlyRate', 'imagePaths', 'features', 'active'];
+    const allowedFields = ['name', 'description', 'capacity', 'bookingType', 'weeklySchedule', 'location', 'hourlyRate', 'imagePaths', 'features', 'active'];
     
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
