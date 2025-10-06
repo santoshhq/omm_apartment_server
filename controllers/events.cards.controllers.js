@@ -71,32 +71,54 @@ class EventCardController {
     }
   }
 
-  // Get All Event Cards (Legacy - requires adminId in query)
-  static async getAllEventCardsLegacy(req, res) {
-    try {
-      console.log('\n⚠️ LEGACY GET ALL EVENT CARDS ROUTE CALLED');
-      
-      const { adminId } = req.query;
-      console.log('🔑 Admin ID from query:', adminId);
-      
-      if (!adminId) {
-        console.log('❌ NO ADMIN ID PROVIDED IN LEGACY ROUTE');
-        return res.status(400).json({
-          success: false,
-          message: 'adminId is required as query parameter. Use: /api/events?adminId=your_admin_id or switch to /api/events/admin/your_admin_id'
-        });
-      }
-      
-      console.log('✅ Using adminId filter in legacy route');
-      const result = await EventCardService.getAllEventCards(adminId);
-      if (!result.success) {
-        return res.status(400).json(result);
-      }
-      return res.status(200).json(result);
-    } catch (error) {
-      return res.status(500).json({ success: false, message: "Server error", error: error.message });
+  // ✅ Get All Event Cards (Legacy - now supports lightweight mode)
+static async getAllEventCardsLegacy(req, res) {
+  try {
+    console.log('\n⚠️ LEGACY GET ALL EVENT CARDS ROUTE CALLED');
+
+    // Extract query parameters
+    const { adminId, lightweight } = req.query;
+    const isLightweight = lightweight === 'true'; // ✅ detect lightweight mode
+    console.log('🔑 Admin ID from query:', adminId);
+    console.log('💡 Lightweight mode:', isLightweight);
+
+    // Validate adminId
+    if (!adminId) {
+      console.log('❌ NO ADMIN ID PROVIDED IN LEGACY ROUTE');
+      return res.status(400).json({
+        success: false,
+        message:
+          'adminId is required as query parameter. Use: /api/events?adminId=your_admin_id or switch to /api/events/admin/your_admin_id',
+      });
     }
+
+    console.log('✅ Using adminId filter in legacy route');
+
+    // ⚡ Call the service with lightweight flag
+    const result = await EventCardService.getAllEventCards(adminId, { lightweight: isLightweight });
+
+    // Handle failure
+    if (!result.success) {
+      console.log('❌ Failed to fetch event cards:', result.message);
+      return res.status(400).json(result);
+    }
+
+    // ✅ Success
+    console.log(`✅ Event cards fetched successfully (${isLightweight ? 'lightweight' : 'full'} mode)`);
+    console.log(`📊 Total cards: ${result.data?.length || 0}`);
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('❌ ERROR in getAllEventCardsLegacy:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
   }
+}
+
 
   // Get Event Card by ID
   static async getEventCardById(req, res) {

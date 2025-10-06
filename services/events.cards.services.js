@@ -77,41 +77,29 @@ class EventCardService {
   }
 
   // Get All Event Cards
-  static async getAllEventCards(adminId = null) {
-    try {
-      console.log('\n=== 📋 GET ALL EVENT CARDS SERVICE CALLED ===');
-      console.log('🔑 Admin ID filter:', adminId);
-      
-      // Build query - if adminId provided, filter by it, otherwise get all
-      const query = adminId ? { adminId } : {};
-      console.log('🔍 Query:', query);
-      
-      const eventCards = await eventCard.find(query).populate('adminId', 'firstName lastName email');
-      console.log('✅ Found event cards:', eventCards.length);
-      
-      // Format response with consistent image handling
-      const formattedCards = eventCards.map(card => ({
-        id: card._id,
-        name: card.name,
-        description: card.description,
-        images: card.imagePaths || [],
-        startdate: card.startdate,
-        enddate: card.enddate,
-        targetamount: card.targetamount,
-        collectedamount: card.collectedamount || 0,
-        eventdetails: card.eventdetails,
-        status: card.status,
-        donations: card.donations,
-        adminId: card.adminId,
-        createdAt: card.createdAt,
-        updatedAt: card.updatedAt
-      }));
-      
-      return { success: true, data: formattedCards };
-    } catch (error) {
-      return { success: false, message: 'Error fetching event cards', error: error.message };
-    }
-  }
+ static async getAllEventCards(adminId = null, options = {}) {
+  const query = adminId ? { adminId } : {};
+  const isLightweight = options.lightweight === true;
+
+  const eventCards = await eventCard.find(query).populate('adminId', 'firstName lastName email');
+
+  const formattedCards = eventCards.map(card => ({
+    id: card._id,
+    name: card.name,
+    description: card.description,
+    images: isLightweight ? [] : card.imagePaths, // ✅ skip images in lightweight mode
+    startdate: card.startdate,
+    enddate: card.enddate,
+    targetamount: card.targetamount,
+    collectedamount: card.collectedamount || 0,
+    status: card.status,
+    adminId: card.adminId,
+    createdAt: card.createdAt,
+  }));
+
+  return { success: true, data: formattedCards };
+}
+
 
   // Get Single Event Card
   static async getEventCardById(cardId) {

@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const EventCardController = require("../controllers/events.cards.controllers");
 
+// ✅ Lightweight legacy route (read-only, requires adminId)
+router.get("/", EventCardController.getAllEventCardsLegacy);
+
 // ===== ADMIN-SPECIFIC EVENT CARD ROUTES =====
 
 // Create Event Card for specific admin
@@ -24,9 +27,5 @@ router.put("/admin/:adminId/event/:id/toggle", EventCardController.toggleEventSt
 
 // Add donation to Event Card
 router.post("/admin/:adminId/event/:id/donate", EventCardController.addDonation);
-
-// ===== LEGACY ROUTES REMOVED FOR SECURITY =====
-// All routes now require admin-specific paths for better security
-// Frontend must use: /api/events/admin/:adminId instead of /api/events/
 
 module.exports = router;
