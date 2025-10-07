@@ -56,5 +56,7 @@ app.use(`${API_PREFIX}/messages`, messageRouter);
 const amenityBookingRouter = require('./routers/amenities.booking.routers');
 app.use(`${API_PREFIX}/bookings`, amenityBookingRouter);
 
+const securityGuardsRouter = require('./routers/securityguards.routers');
+app.use(`${API_PREFIX}/security-guards`, securityGuardsRouter);
 
 module.exports=app;
