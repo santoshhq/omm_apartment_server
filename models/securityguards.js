@@ -5,7 +5,7 @@ const { Schema } = mongoose;
 const securityGuardSchema = new Schema({
     adminId:{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'AdminProfiles',
+        ref: 'adminSignup',
         required: true,
     
     },

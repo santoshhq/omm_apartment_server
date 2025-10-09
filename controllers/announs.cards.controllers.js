@@ -217,17 +217,9 @@ class AnnounCardController {
     static async toggleAnnounStatus(req, res) {
         try {
             console.log('\n=== 🔄 TOGGLE ANNOUNCEMENT STATUS CONTROLLER CALLED ===');
-            console.log('🆔 ID:', req.params.id);
-
-            const { id } = req.params;
-            const { adminId } = req.body;
-
-            if (!id) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Announcement ID is required'
-                });
-            }
+            const { adminId, id } = req.params;
+            console.log('🆔 Admin ID:', adminId);
+            console.log('🆔 Announcement ID:', id);
 
             if (!adminId) {
                 return res.status(400).json({
@@ -235,10 +227,15 @@ class AnnounCardController {
                     message: 'Admin ID is required for status toggle authorization'
                 });
             }
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Announcement ID is required'
+                });
+            }
 
             const result = await AnnounCardService.toggleAnnounStatus(adminId, id);  
-            
-            const statusCode = result.success ? 200 : (result.message.includes('not found') ? 404 : 400);
+            const statusCode = result.success ? 200 : (result.message && result.message.includes('not found') ? 404 : 400);
             return res.status(statusCode).json(result);
 
         } catch (error) {
