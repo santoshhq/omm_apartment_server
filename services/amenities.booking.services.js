@@ -1,27 +1,29 @@
 require('dotenv').config();
 const { AmenityBooking } = require('../models/amenities.booking');
 const { Amenity } = require('../models/adding.amenities');
-const AdminMemberProfile = require('../models/auth.models/signup');
+const AdminMemberProfile = require('../models/auth.models/adminMemberProfile');
 
 class AmenityBookingService {
 
     // 📅 CREATE NEW BOOKING
     static async createBooking(bookingData) {
         try {
-            console.log('\n=== 📅 CREATE AMENITY BOOKING SERVICE CALLED ===');
+            console.log('\n=== �️ CREATE AMENITY BOOKING SERVICE CALLED ===');
             console.log('🏢 Amenity ID:', bookingData.amenityId);
             console.log('👤 User ID:', bookingData.userId);
-            console.log('📅 Date:', bookingData.date);
+            console.log('�️ Date:', bookingData.date);
             console.log('⏰ Time:', `${bookingData.startTime} - ${bookingData.endTime}`);
             console.log('🎯 Booking Type:', bookingData.bookingType);
+            console.log('💳 Payment Type:', bookingData.paymentType);
+            console.log('💰 Amount:', bookingData.amount);
 
             // Validate required fields
-            const { amenityId, userId, bookingType, date, startTime, endTime } = bookingData;
+            const { amenityId, userId, bookingType, date, startTime, endTime, paymentType, amount } = bookingData;
             
-            if (!amenityId || !userId || !bookingType || !date || !startTime || !endTime) {
+            if (!amenityId || !userId || !bookingType || !date || !startTime || !endTime || !paymentType || amount == null) {
                 return {
                     success: false,
-                    message: 'All fields are required: amenityId, userId, bookingType, date, startTime, endTime'
+                    message: 'All fields are required: amenityId, userId, bookingType, date, startTime, endTime, paymentType, amount'
                 };
             }
 
@@ -90,7 +92,7 @@ class AmenityBookingService {
             }
 
             // Check amenity schedule for the booking day
-            const dayOfWeek = bookingDate.toLocaleDateString('en', { weekday: 'lowercase' });
+            const dayOfWeek = bookingDate.toLocaleDateString('en', { weekday: 'long' }).toLowerCase();
             const daySchedule = amenity.weeklySchedule.get(dayOfWeek);
             
             if (!daySchedule || daySchedule.closed) {
@@ -122,7 +124,9 @@ class AmenityBookingService {
                 date: bookingDate,
                 startTime,
                 endTime,
-                status: 'pending'
+                status: 'pending',
+                paymentType,
+                amount
             });
 
             const savedBooking = await newBooking.save();
@@ -131,7 +135,7 @@ class AmenityBookingService {
             // Populate booking data for response
             const populatedBooking = await AmenityBooking.findById(savedBooking._id)
                 .populate('amenityId', 'name location hourlyRate')
-                .populate('userId', 'firstName lastName email flatNo');
+                .populate('userId', 'firstName lastName floor mobile flatNo');
 
             return {
                 success: true,
@@ -240,7 +244,7 @@ class AmenityBookingService {
 
             const bookings = await AmenityBooking.find(query)
                 .populate('amenityId', 'name location hourlyRate imagePaths')
-                .populate('userId', 'firstName lastName email flatNo mobile')
+                .populate('userId', 'firstName lastName floor mobile flatNo')
                 .sort({ date: 1, startTime: 1 });
 
             console.log('✅ Found bookings:', bookings.length);
@@ -268,7 +272,7 @@ class AmenityBookingService {
 
             const booking = await AmenityBooking.findById(bookingId)
                 .populate('amenityId', 'name location hourlyRate imagePaths weeklySchedule')
-                .populate('userId', 'firstName lastName email flatNo mobile');
+                .populate('userId', 'firstName lastName floor mobile flatNo');
 
             if (!booking) {
                 return {
@@ -313,7 +317,7 @@ class AmenityBookingService {
 
             const booking = await AmenityBooking.findById(bookingId)
                 .populate('amenityId', 'name')
-                .populate('userId', 'firstName lastName email');
+                .populate('userId', 'firstName lastName floor mobile');
 
             if (!booking) {
                 return {
@@ -440,6 +444,7 @@ class AmenityBookingService {
 
             const bookings = await AmenityBooking.find(query)
                 .populate('amenityId', 'name location hourlyRate imagePaths')
+                .populate('userId', 'firstName lastName floor mobile flatNo')
                 .sort({ date: 1, startTime: 1 });
 
             console.log('✅ Found user bookings:', bookings.length);

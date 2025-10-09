@@ -33,7 +33,17 @@ const bookingSchema = new mongoose.Schema({
     type: String, 
     enum: ['accepted','rejected','pending'], 
     default: 'pending' 
-  }
+  },
+  paymentType: { 
+    type: String, 
+    enum: ['cash'],
+    required: true
+  },
+  amount: {
+    type: Number,
+    required: true
+  },
+
 }, { timestamps: true });
 
 const AmenityBooking = db.model('AmenityBooking', bookingSchema);
