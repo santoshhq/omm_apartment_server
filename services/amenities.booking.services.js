@@ -156,49 +156,50 @@ class AmenityBookingService {
     static async checkBookingConflicts(amenityId, date, startTime, endTime, bookingType) {
         try {
             const bookingDate = new Date(date);
-            
-            // Find existing bookings for the same amenity and date
+            // Find all bookings for this amenity and date that are not rejected
             const existingBookings = await AmenityBooking.find({
                 amenityId: amenityId,
                 date: bookingDate,
-                status: { $in: ['accepted', 'pending'] } // Only check non-rejected bookings
+                status: { $in: ['accepted', 'pending'] }
             });
 
-            if (existingBookings.length === 0) {
+            // If bookingType is exclusive, block if any booking (exclusive or shared) overlaps
+            if (bookingType === 'exclusive') {
+                const hasTimeConflict = existingBookings.some(booking =>
+                    this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)
+                );
+                if (hasTimeConflict) {
+                    return {
+                        success: false,
+                        message: 'This slot is already booked for an exclusive event. Please choose another time.'
+                    };
+                }
                 return { success: true };
             }
 
-            // For exclusive bookings, no other bookings allowed
-            if (bookingType === 'exclusive') {
+            // If any existing exclusive booking overlaps, block this shared booking
+            const hasExclusiveConflict = existingBookings.some(booking =>
+                booking.bookingType === 'exclusive' && this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)
+            );
+            if (hasExclusiveConflict) {
                 return {
                     success: false,
-                    message: 'Exclusive booking conflicts with existing bookings on this date'
+                    message: 'This slot is already booked for an exclusive event. Please choose another time.'
                 };
             }
 
-            // Check if any existing booking is exclusive
-            const hasExclusiveBooking = existingBookings.some(booking => booking.bookingType === 'exclusive');
-            if (hasExclusiveBooking) {
-                return {
-                    success: false,
-                    message: 'Cannot book during exclusive booking time slot'
-                };
-            }
-
-            // For shared bookings, check time overlaps
-            const hasTimeConflict = existingBookings.some(booking => {
-                return this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime);
-            });
-
-            if (hasTimeConflict) {
-                return {
-                    success: false,
-                    message: 'Time slot conflicts with existing bookings'
-                };
-            }
+            // For shared bookings, check time overlaps with other shared bookings if needed (optional)
+            // const hasSharedConflict = existingBookings.some(booking =>
+            //     booking.bookingType === 'shared' && this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)
+            // );
+            // if (hasSharedConflict) {
+            //     return {
+            //         success: false,
+            //         message: 'Time slot conflicts with existing shared bookings.'
+            //     };
+            // }
 
             return { success: true };
-
         } catch (error) {
             return {
                 success: false,
