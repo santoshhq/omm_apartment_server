@@ -27,7 +27,7 @@ const billsManagementSchema = new Schema({
     category: {
         type: String,
         required: true,
-        enum: ['maintenance', 'security-services', 'cleaning', 'amenities'],
+        enum: ['maintenance', 'security-services', 'cleaning', 'amenities','others'],
     
         trim: true
     },
@@ -36,11 +36,7 @@ const billsManagementSchema = new Schema({
         type: Date,
         required: true
     },
-    category: {
-        type: String,
-        required: true,
-        trim: true
-    },
+   
     createdByAdminId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'adminSignup',
