@@ -1,0 +1,63 @@
+const BillRequestService = require('../../services/bills.managements/bill.requests.services');
+
+class BillRequestsController {
+    static async createBillRequest(req, res) {
+        try {
+            const result = await BillRequestService.createBillRequest(req.body);
+            return res.status(result.status ? 201 : 400).json(result);
+        } catch (error) {
+            return res.status(500).json({ status: false, message: 'Internal server error', error: error.message });
+        }
+    }
+
+    static async getAllBillRequests(req, res) {
+        try {
+            const result = await BillRequestService.getAllBillRequests();
+            return res.status(result.status ? 200 : 400).json(result);
+        } catch (error) {
+            return res.status(500).json({ status: false, message: 'Internal server error', error: error.message });
+        }
+    }
+
+    static async getBillRequestsByBillId(req, res) {
+        try {
+            const { billId } = req.params;
+            const result = await BillRequestService.getBillRequestsByBillId(billId);
+            return res.status(result.status ? 200 : 404).json(result);
+        } catch (error) {
+            return res.status(500).json({ status: false, message: 'Internal server error', error: error.message });
+        }
+    }
+
+    static async getBillRequestById(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await BillRequestService.getBillRequestById(id);
+            return res.status(result.status ? 200 : 404).json(result);
+        } catch (error) {
+            return res.status(500).json({ status: false, message: 'Internal server error', error: error.message });
+        }
+    }
+
+    static async updateBillRequest(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await BillRequestService.updateBillRequest(id, req.body);
+            return res.status(result.status ? 200 : 404).json(result);
+        } catch (error) {
+            return res.status(500).json({ status: false, message: 'Internal server error', error: error.message });
+        }
+    }
+
+    static async deleteBillRequest(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await BillRequestService.deleteBillRequest(id);
+            return res.status(result.status ? 200 : 404).json(result);
+        } catch (error) {
+            return res.status(500).json({ status: false, message: 'Internal server error', error: error.message });
+        }
+    }
+}
+
+module.exports = BillRequestsController;

@@ -8,10 +8,11 @@ class AmenityBookingService {
     // 📅 CREATE NEW BOOKING
     static async createBooking(bookingData) {
         try {
-            console.log('\n=== �️ CREATE AMENITY BOOKING SERVICE CALLED ===');
+            console.log('\n=== 📅 CREATE AMENITY BOOKING SERVICE CALLED ===');
             console.log('🏢 Amenity ID:', bookingData.amenityId);
             console.log('👤 User ID:', bookingData.userId);
-            console.log('�️ Date:', bookingData.date);
+            if (bookingData.adminId) console.log('🛡️ Admin ID:', bookingData.adminId);
+            console.log('📅 Date:', bookingData.date);
             console.log('⏰ Time:', `${bookingData.startTime} - ${bookingData.endTime}`);
             console.log('🎯 Booking Type:', bookingData.bookingType);
             console.log('💳 Payment Type:', bookingData.paymentType);
@@ -155,6 +156,11 @@ class AmenityBookingService {
     // 🔍 CHECK BOOKING CONFLICTS
     static async checkBookingConflicts(amenityId, date, startTime, endTime, bookingType) {
         try {
+            console.log('\n=== 🔍 CHECK BOOKING CONFLICTS CALLED ===');
+            console.log('🏢 Amenity ID:', amenityId);
+            console.log('📅 Date:', date);
+            console.log('⏰ Time:', `${startTime} - ${endTime}`);
+            console.log('🎯 Booking Type:', bookingType);
             const bookingDate = new Date(date);
             // Find all bookings for this amenity and date that are not rejected
             const existingBookings = await AmenityBooking.find({
@@ -162,6 +168,7 @@ class AmenityBookingService {
                 date: bookingDate,
                 status: { $in: ['accepted', 'pending'] }
             });
+            console.log('🔎 Existing bookings found:', existingBookings.length);
 
             // If bookingType is exclusive, block if any booking (exclusive or shared) overlaps
             if (bookingType === 'exclusive') {
@@ -169,6 +176,7 @@ class AmenityBookingService {
                     this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)
                 );
                 if (hasTimeConflict) {
+                    console.log('❌ Conflict: Overlapping booking exists for exclusive slot.');
                     return {
                         success: false,
                         message: 'This slot is already booked for an exclusive event. Please choose another time.'
@@ -182,6 +190,7 @@ class AmenityBookingService {
                 booking.bookingType === 'exclusive' && this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)
             );
             if (hasExclusiveConflict) {
+                console.log('❌ Conflict: Overlapping exclusive booking exists.');
                 return {
                     success: false,
                     message: 'This slot is already booked for an exclusive event. Please choose another time.'
@@ -193,14 +202,17 @@ class AmenityBookingService {
             //     booking.bookingType === 'shared' && this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)
             // );
             // if (hasSharedConflict) {
+            //     console.log('❌ Conflict: Overlapping shared booking exists.');
             //     return {
             //         success: false,
             //         message: 'Time slot conflicts with existing shared bookings.'
             //     };
             // }
 
+            console.log('✅ No booking conflicts detected.');
             return { success: true };
         } catch (error) {
+            console.log('❌ Error in checkBookingConflicts:', error.message);
             return {
                 success: false,
                 message: 'Error checking booking conflicts: ' + error.message
@@ -212,24 +224,20 @@ class AmenityBookingService {
     static async getAllBookings(filters = {}) {
         try {
             console.log('\n=== 📋 GET ALL BOOKINGS SERVICE CALLED ===');
-            
+            console.log('🔍 Filters:', filters);
             const query = {};
-            
             // Filter by status
             if (filters.status) {
                 query.status = filters.status;
             }
-            
             // Filter by amenity
             if (filters.amenityId) {
                 query.amenityId = filters.amenityId;
             }
-            
             // Filter by user
             if (filters.userId) {
                 query.userId = filters.userId;
             }
-            
             // Filter by date range
             if (filters.startDate || filters.endDate) {
                 query.date = {};
@@ -240,22 +248,17 @@ class AmenityBookingService {
                     query.date.$lte = new Date(filters.endDate);
                 }
             }
-
-            console.log('🔍 Query filters:', query);
-
+            console.log('🔍 Query for bookings:', query);
             const bookings = await AmenityBooking.find(query)
                 .populate('amenityId', 'name location hourlyRate imagePaths')
                 .populate('userId', 'firstName lastName floor mobile flatNo')
                 .sort({ date: 1, startTime: 1 });
-
-            console.log('✅ Found bookings:', bookings.length);
-
+            console.log('✅ Bookings found:', bookings.length);
             return {
                 success: true,
                 message: `Found ${bookings.length} bookings`,
                 data: bookings
             };
-
         } catch (error) {
             console.log('❌ Error in getAllBookings service:', error.message);
             return {
@@ -270,26 +273,22 @@ class AmenityBookingService {
         try {
             console.log('\n=== 📝 GET BOOKING BY ID SERVICE CALLED ===');
             console.log('🆔 Booking ID:', bookingId);
-
             const booking = await AmenityBooking.findById(bookingId)
                 .populate('amenityId', 'name location hourlyRate imagePaths weeklySchedule')
                 .populate('userId', 'firstName lastName floor mobile flatNo');
-
             if (!booking) {
+                console.log('❌ Booking not found for ID:', bookingId);
                 return {
                     success: false,
                     message: 'Booking not found'
                 };
             }
-
             console.log('✅ Booking found:', booking._id);
-
             return {
                 success: true,
                 message: 'Booking retrieved successfully',
                 data: booking
             };
-
         } catch (error) {
             console.log('❌ Error in getBookingById service:', error.message);
             return {
@@ -300,13 +299,13 @@ class AmenityBookingService {
     }
 
     // ✅ UPDATE BOOKING STATUS
-    static async updateBookingStatus(bookingId, newStatus, adminComment = '') {
+    static async updateBookingStatus(bookingId, newStatus, adminComment = '', adminId = null) {
         try {
             console.log('\n=== ✅ UPDATE BOOKING STATUS SERVICE CALLED ===');
             console.log('🆔 Booking ID:', bookingId);
             console.log('📋 New Status:', newStatus);
             console.log('💬 Admin Comment:', adminComment);
-
+            if (adminId) console.log('🛡️ Admin ID:', adminId);
             // Validate status
             const validStatuses = ['accepted', 'rejected', 'pending'];
             if (!validStatuses.includes(newStatus)) {
@@ -315,28 +314,27 @@ class AmenityBookingService {
                     message: 'Invalid status. Must be: accepted, rejected, or pending'
                 };
             }
-
             const booking = await AmenityBooking.findById(bookingId)
                 .populate('amenityId', 'name')
                 .populate('userId', 'firstName lastName floor mobile');
-
             if (!booking) {
+                console.log('❌ Booking not found for ID:', bookingId);
                 return {
                     success: false,
                     message: 'Booking not found'
                 };
             }
-
             // Update booking status
             booking.status = newStatus;
             if (adminComment) {
                 booking.adminComment = adminComment;
             }
+            if (adminId) {
+                booking.adminId = adminId;
+            }
             booking.updatedAt = new Date();
-
             const updatedBooking = await booking.save();
             console.log('✅ Booking status updated successfully');
-
             // Emit real-time notification
             if (global.io) {
                 global.io.to(`user_${booking.userId._id}`).emit('booking_status_updated', {
@@ -348,13 +346,11 @@ class AmenityBookingService {
                 });
                 console.log('🔌 Booking status update broadcasted');
             }
-
             return {
                 success: true,
                 message: 'Booking status updated successfully',
                 data: updatedBooking
             };
-
         } catch (error) {
             console.log('❌ Error in updateBookingStatus service:', error.message);
             return {
@@ -431,31 +427,25 @@ class AmenityBookingService {
         try {
             console.log('\n=== 📊 GET USER BOOKINGS SERVICE CALLED ===');
             console.log('👤 User ID:', userId);
-
+            console.log('🔍 Filters:', filters);
             const query = { userId };
-
             // Add additional filters
             if (filters.status) {
                 query.status = filters.status;
             }
-
             if (filters.upcoming) {
                 query.date = { $gte: new Date() };
             }
-
             const bookings = await AmenityBooking.find(query)
                 .populate('amenityId', 'name location hourlyRate imagePaths')
                 .populate('userId', 'firstName lastName floor mobile flatNo')
                 .sort({ date: 1, startTime: 1 });
-
-            console.log('✅ Found user bookings:', bookings.length);
-
+            console.log('✅ User bookings found:', bookings.length);
             return {
                 success: true,
                 message: `Found ${bookings.length} bookings`,
                 data: bookings
             };
-
         } catch (error) {
             console.log('❌ Error in getUserBookings service:', error.message);
             return {

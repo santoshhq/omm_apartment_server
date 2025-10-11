@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const express=require('express');
 const app=express();
@@ -62,5 +63,11 @@ app.use(`${API_PREFIX}/security`, securityRouter);
 
 const housekeepingRouter = require('./routers/housekeeping.routers');
 app.use(`${API_PREFIX}/housekeeping`, housekeepingRouter);
+
+const billsRouter = require('./routers/bills.managements/bills.routers');
+app.use(`${API_PREFIX}/bills`, billsRouter);
+
+const billRequestsRouter = require('./routers/bills.managements/bill.requests.routers');
+app.use(`${API_PREFIX}/bill-requests`, billRequestsRouter);
 
 module.exports=app;
