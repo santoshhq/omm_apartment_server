@@ -8,7 +8,7 @@ class EventCardController {
       
       // Get adminId from params (for new admin-specific routes) or body (for legacy)
       const adminIdFromParams = req.params.adminId;
-      const { image, images, imagePaths, name, startdate, enddate, description, targetamount, eventdetails, adminId: adminIdFromBody } = req.body;
+      const { image, images, imagePaths, name, startdate, enddate, description, targetamount, eventdetails, upiId, adminId: adminIdFromBody } = req.body;
       
       // Use adminId from params if available, otherwise from body (backward compatibility)
       const adminId = adminIdFromParams || adminIdFromBody;
@@ -35,12 +35,18 @@ class EventCardController {
         description,
         targetamount,
         eventdetails,
+        upiId,
         adminId
       );
 
       if (!result.success) {
         return res.status(400).json(result);
       }
+
+      // Emit Socket.IO event for real-time updates
+      const io = req.app.get('io');
+      io.emit('event-created', { event: result.data });
+
       return res.status(201).json(result);
     } catch (error) {
       return res.status(500).json({ success: false, message: "Server error", error: error.message });
@@ -151,6 +157,11 @@ static async getAllEventCardsLegacy(req, res) {
       if (!result.success) {
         return res.status(404).json(result);
       }
+
+      // Emit Socket.IO event for real-time updates
+      const io = req.app.get('io');
+      io.emit('event-updated', { event: result.data });
+
       return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json({ success: false, message: "Server error", error: error.message });
@@ -173,12 +184,26 @@ static async getAllEventCardsLegacy(req, res) {
         // New admin-specific route
         const result = await EventCardService.deleteEventCard(adminIdFromParams, eventId);
         const statusCode = result.success ? 200 : 404;
+
+        // Emit Socket.IO event for real-time updates
+        if (result.success) {
+          const io = req.app.get('io');
+          io.emit('event-deleted', { eventId });
+        }
+
         return res.status(statusCode).json(result);
       } else {
         // Legacy route - less secure but backward compatible
         console.log('⚠️ USING LEGACY DELETE - NO ADMIN VALIDATION');
         const result = await EventCardService.deleteEventCard(null, eventId);
         const statusCode = result.success ? 200 : 404;
+
+        // Emit Socket.IO event for real-time updates
+        if (result.success) {
+          const io = req.app.get('io');
+          io.emit('event-deleted', { eventId });
+        }
+
         return res.status(statusCode).json(result);
       }
     } catch (error) {

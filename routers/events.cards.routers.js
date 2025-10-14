@@ -25,7 +25,4 @@ router.delete("/admin/:adminId/event/:id", EventCardController.deleteEventCard);
 // Toggle Event Status (admin-specific)
 router.put("/admin/:adminId/event/:id/toggle", EventCardController.toggleEventStatus);
 
-// Add donation to Event Card
-router.post("/admin/:adminId/event/:id/donate", EventCardController.addDonation);
-
 module.exports = router;

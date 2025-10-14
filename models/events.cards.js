@@ -14,6 +14,8 @@ const eventCardSchema = new Schema(
     description: { type: String, required: true, trim: true },
     targetamount: { type: Number, required: true },
     collectedamount: { type: Number, default: 0 }, // ✅ to track donations
+    totalDonors: { type: Number, default: 0 }, // ✅ count of accepted donors
+    averageDonation: { type: Number, default: 0 }, // ✅ average donation amount
     eventdetails: {
       type: [String], // array of details
     },
@@ -21,18 +23,16 @@ const eventCardSchema = new Schema(
       type: Boolean,
       default: true, // ✅ toggle for Active/Inactive
     },
+    upiId: {
+      type: String,
+      required: true,
+      trim: true
+    },
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "adminSignup", // links to signup collection
       required: true,
     },
-    donations: [
-      {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "userSignup" },
-        amount: { type: Number, required: true },
-        date: { type: Date, default: Date.now },
-      },
-    ], // ✅ donation history
   },
   { timestamps: true }
 );

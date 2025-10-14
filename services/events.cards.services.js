@@ -1,8 +1,9 @@
 const eventCard = require("../models/events.cards");
+const Donation = require("../models/events.cards/donations");
 
 class EventCardService {
   // Create Event Card
-  static async createEventCard(images, name, startdate, enddate, description, targetamount, eventdetails, adminId) {
+  static async createEventCard(images, name, startdate, enddate, description, targetamount, eventdetails, upiId, adminId) {
     try {
       console.log('\n=== 🎪 CREATE EVENT CARD SERVICE CALLED ===');
       console.log('🖼️ Images received:', images);
@@ -39,6 +40,7 @@ class EventCardService {
         description: description.trim(),
         targetamount: parseFloat(targetamount),
         eventdetails: Array.isArray(eventdetails) ? eventdetails : [eventdetails],
+        upiId: upiId.trim(),
         adminId
       });
 
@@ -59,8 +61,11 @@ class EventCardService {
           description: savedEventCard.description,
           targetamount: savedEventCard.targetamount,
           collectedamount: savedEventCard.collectedamount,
+          totalDonors: savedEventCard.totalDonors,
+          averageDonation: savedEventCard.averageDonation,
           eventdetails: savedEventCard.eventdetails,
           status: savedEventCard.status,
+          upiId: savedEventCard.upiId,
           adminId: savedEventCard.adminId,
           createdAt: savedEventCard.createdAt
         }
@@ -92,7 +97,10 @@ class EventCardService {
     enddate: card.enddate,
     targetamount: card.targetamount,
     collectedamount: card.collectedamount || 0,
+    totalDonors: card.totalDonors || 0,
+    averageDonation: card.averageDonation || 0,
     status: card.status,
+    upiId: card.upiId,
     adminId: card.adminId,
     createdAt: card.createdAt,
   }));
@@ -108,7 +116,12 @@ class EventCardService {
       if (!card) {
         return { success: false, message: 'Event card not found' };
       }
-      
+
+      // Fetch donations from separate Donation collection
+      const donations = await Donation.find({ eventId: cardId })
+        .populate('userId', 'firstName lastName flatNo floor mobile')
+        .sort({ createdAt: -1 }); // Most recent first
+
       // Format response with consistent image handling
       const formattedCard = {
         id: card._id,
@@ -119,14 +132,18 @@ class EventCardService {
         enddate: card.enddate,
         targetamount: card.targetamount,
         collectedamount: card.collectedamount || 0,
+        totalDonors: card.totalDonors || 0,
+        averageDonation: card.averageDonation || 0,
         eventdetails: card.eventdetails,
         status: card.status,
-        donations: card.donations,
+        upiId: card.upiId,
+        eventdetails: card.eventdetails,
+        donations: card.donations, // Use fetched donations from separate collection
         adminId: card.adminId,
         createdAt: card.createdAt,
         updatedAt: card.updatedAt
       };
-      
+
       return { success: true, data: formattedCard };
     } catch (error) {
       return { success: false, message: 'Error fetching event card', error: error.message };
@@ -185,11 +202,11 @@ class EventCardService {
 
       // Prepare update object
       const updateObject = {};
-      const allowedFields = ['name', 'description', 'imagePaths', 'images', 'image', 'startdate', 'enddate', 'targetamount', 'eventdetails', 'status'];
+      const allowedFields = ['name', 'description', 'imagePaths', 'images', 'image', 'startdate', 'enddate', 'targetamount', 'eventdetails', 'status', 'upiId'];
       
       for (const field of allowedFields) {
         if (updateData[field] !== undefined) {
-          if (field === 'name' || field === 'description') {
+          if (field === 'name' || field === 'description' || field === 'upiId') {
             updateObject[field] = updateData[field].trim();
           } else if (field === 'imagePaths' || field === 'images' || field === 'image') {
             // Handle image updates - accept any format
@@ -237,6 +254,11 @@ class EventCardService {
 
       console.log('✅ EVENT CARD UPDATED SUCCESSFULLY');
 
+      // Fetch updated donations from separate Donation collection
+      const updatedDonations = await Donation.find({ eventId: updatedCard._id })
+        .populate('userId', 'firstName lastName flatNo floor mobile')
+        .sort({ createdAt: -1 });
+
       return {
         success: true,
         message: 'Event card updated successfully',
@@ -250,9 +272,12 @@ class EventCardService {
             enddate: updatedCard.enddate,
             targetamount: updatedCard.targetamount,
             collectedamount: updatedCard.collectedamount || 0,
+            totalDonors: updatedCard.totalDonors || 0,
+            averageDonation: updatedCard.averageDonation || 0,
             eventdetails: updatedCard.eventdetails,
             status: updatedCard.status,
-            donations: updatedCard.donations,
+            upiId: updatedCard.upiId,
+            donations: updatedDonations, // Use fetched donations from separate collection
             updatedAt: updatedCard.updatedAt
           },
           changes: {
@@ -311,27 +336,6 @@ class EventCardService {
         message: 'Error deleting event card', 
         error: error.message 
       };
-    }
-  }
-
-  // Add Donation
-  static async addDonation(cardId, userId, amount) {
-    try {
-      const card = await eventCard.findById(cardId);
-      if (!card) {
-        return { success: false, message: 'Event card not found' };
-      }
-
-      // Push donation
-      card.donations.push({ userId, amount });
-
-      // Update collected amount
-      card.collectedamount = (card.collectedamount || 0) + amount;
-
-      await card.save();
-      return { success: true, message: 'Donation added successfully', data: card };
-    } catch (error) {
-      return { success: false, message: 'Error adding donation', error: error.message };
     }
   }
 
