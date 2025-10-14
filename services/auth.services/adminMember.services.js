@@ -3,6 +3,7 @@ const AdminMemberProfile = require('../../models/auth.models/adminMemberProfile'
 const AdminMemberCredentials = require('../../models/auth.models/adminMemberCredentials');
 const Signup = require('../../models/auth.models/signup');
 const bcrypt = require('bcrypt');
+const { generateToken } = require('../../utils/jwt.utils');
 
 // Environment variables
 const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
@@ -287,6 +288,24 @@ const memberLoginService = async (userId, password) => {
     
     console.log('🎉 MEMBER LOGIN SUCCESSFUL');
     console.log('📊 Login count:', credentials.loginCount);
+
+    // Check if member profile exists
+    if (!credentials.memberProfileId) {
+      console.log('❌ MEMBER PROFILE NOT FOUND - Credentials corrupted');
+      return {
+        success: false,
+        message: 'Member profile not found. Please contact administrator to fix your account.'
+      };
+    }
+
+    // Generate JWT token
+    const tokenPayload = {
+      id: credentials.memberProfileId._id,
+      userId: credentials.userId,
+      email: credentials.memberProfileId.email,
+      type: 'member'
+    };
+    const token = generateToken(tokenPayload);
     
     return {
       success: true,
@@ -303,6 +322,7 @@ const memberLoginService = async (userId, password) => {
           parkingDetails: formatParkingDetails(credentials.memberProfileId.parkingArea, credentials.memberProfileId.parkingSlot),
           memberType: credentials.memberType
         },
+        token: token,
         loginInfo: {
           userId: credentials.userId,
           lastLogin: credentials.lastLogin,

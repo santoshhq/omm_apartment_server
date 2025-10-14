@@ -1,6 +1,7 @@
 require('dotenv').config();
 const Signup = require('../../models/auth.models/signup');
 const bcrypt = require('bcrypt');
+const { generateToken } = require('../../utils/jwt.utils');
 
 // Environment variables with fallback defaults
 const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
@@ -179,12 +180,21 @@ const verifyOTPService = async (email, otp) => {
     console.log('💾 User verification status updated in database');
     console.log('🎉 EMAIL VERIFICATION COMPLETED SUCCESSFULLY');
 
+    // Generate JWT token
+    const tokenPayload = {
+      id: user._id,
+      email: user.email,
+      type: 'admin'
+    };
+    const token = generateToken(tokenPayload);
+
     return {
       status: true,
       message: 'Email verified successfully. You can now login.',
       data: {
         id: user._id,
         email: user.email,
+        token: token,
         verifiedAt: new Date()
       }
     };
@@ -254,6 +264,14 @@ const loginService = async (email, password) => {
     console.log('   📧 Email:', user.email);
     console.log('   ✅ Is Verified:', user.isVerified);
     console.log('   👥 Is Profile:', user.isProfile);
+
+    // Generate JWT token
+    const tokenPayload = {
+      id: user._id,
+      email: user.email,
+      type: 'admin'
+    };
+    const token = generateToken(tokenPayload);
     
     // Successful login
     return {
@@ -262,6 +280,7 @@ const loginService = async (email, password) => {
       data: {
         id: user._id,
         email: user.email,
+        token: token,
         isVerified: user.isVerified,
         isProfile: user.isProfile,
         loginAt: new Date()

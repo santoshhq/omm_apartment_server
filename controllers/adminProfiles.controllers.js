@@ -1,12 +1,30 @@
 const { createAdminProfile } = require('../services/adminProfiles.services');
+const compressBase64Image = require('../middleware/compressBase64Image');
 // Create Admin Profile controller
 const createAdminProfileController = async (req, res) => {
-    const { userId, firstName, lastName, email, apartment, phone, address } = req.body;
-    const imagePath = req.file ? req.file.path : null; // Assuming you're using multer for file uploads
+    const { userId, firstName, lastName, email, apartment, phone, address, imagePath } = req.body;
+
+    // Compress base64 image if provided
+    let processedImagePath = imagePath;
+    if (imagePath && typeof imagePath === 'string' && imagePath.startsWith('data:image/')) {
+        try {
+            console.log('🖼️ Compressing base64 image for admin profile...');
+            processedImagePath = await compressBase64Image(imagePath, 100); // 100KB max
+            console.log('✅ Image compressed successfully');
+        } catch (error) {
+            console.log('❌ Image compression failed:', error.message);
+            return res.status(400).json({
+                status: false,
+                message: 'Invalid image data provided',
+                error: error.message
+            });
+        }
+    }
+
     if (!userId || !firstName || !lastName || !email || !apartment || !phone || !address) {
         return res.status(400).json({ status: false, message: 'All fields including userId are required' });
     }
-    const result = await createAdminProfile.createProfile(userId, firstName, lastName, email, apartment, phone, address, imagePath);
+    const result = await createAdminProfile.createProfile(userId, firstName, lastName, email, apartment, phone, address, processedImagePath);
     if (result.status) {
         return res.status(201).json(result);
     } else {
@@ -42,9 +60,25 @@ const getAdminProfileByIdController = async (req, res) => {
 const updateAdminProfileController = async (req, res) => {
     const { profileId } = req.params;
     const updateData = req.body;
-    
+
     if (!profileId) {
         return res.status(400).json({ status: false, message: 'Profile ID is required' });
+    }
+
+    // Compress base64 image if provided in updateData
+    if (updateData.imagePath && typeof updateData.imagePath === 'string' && updateData.imagePath.startsWith('data:image/')) {
+        try {
+            console.log('🖼️ Compressing base64 image for admin profile update...');
+            updateData.imagePath = await compressBase64Image(updateData.imagePath, 100); // 100KB max
+            console.log('✅ Image compressed successfully');
+        } catch (error) {
+            console.log('❌ Image compression failed:', error.message);
+            return res.status(400).json({
+                status: false,
+                message: 'Invalid image data provided',
+                error: error.message
+            });
+        }
     }
 
     // Remove empty fields from update data
@@ -54,7 +88,7 @@ const updateAdminProfileController = async (req, res) => {
         }
     });
 
-    // Handle image path if file is uploaded
+    // Handle image path if file is uploaded (fallback for multer uploads)
     if (req.file) {
         updateData.imagePath = req.file.path;
     }
