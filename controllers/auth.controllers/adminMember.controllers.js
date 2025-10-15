@@ -3,7 +3,9 @@ const {
   getAdminMembersService,
   memberLoginService,
   adminUpdateMemberService,
-  adminDeleteMemberService
+  adminDeleteMemberService,
+  memberForgotPasswordService,
+  memberResetPasswordService
 } = require('../../services/auth.services/adminMember.services');
 
 // Admin Creates Member Controller
@@ -268,10 +270,129 @@ const adminDeleteMember = async (req, res) => {
   }
 };
 
+// Member Forgot Password Controller
+const memberForgotPassword = async (req, res) => {
+  try {
+    const { email, emailId, userId } = req.body;
+
+    // Accept either email or userId
+    const identifier = email || emailId || userId;
+
+    if (!identifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email or User ID is required'
+      });
+    }
+
+    // Check if it's an email or userId
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmail = emailRegex.test(identifier);
+
+    if (isEmail) {
+      // Validate email format
+      if (!emailRegex.test(identifier)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid email address'
+        });
+      }
+    } else {
+      // Validate userId format (6 digits only)
+      const userIdRegex = /^\d{6}$/;
+      if (!userIdRegex.test(identifier)) {
+        return res.status(400).json({
+          success: false,
+          message: 'User ID must be exactly 6 digits (numbers only)'
+        });
+      }
+    }
+
+    const result = await memberForgotPasswordService(identifier);
+
+    if (result.success) {
+      return res.status(200).json(result);
+    } else {
+      return res.status(400).json(result);
+    }
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Member Reset Password Controller
+const memberResetPassword = async (req, res) => {
+  try {
+    const { userId, emailId, otp, newPassword } = req.body;
+
+    // Accept either userId or emailId
+    const identifier = userId || emailId;
+
+    if (!identifier || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID/Email, OTP, and new password are required'
+      });
+    }
+
+    // If userId is provided, validate format
+    if (userId) {
+      const userIdRegex = /^\d{6}$/;
+      if (!userIdRegex.test(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'User ID must be exactly 6 digits (numbers only)'
+        });
+      }
+    }
+
+    // If emailId is provided, validate format
+    if (emailId && !userId) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid email address'
+        });
+      }
+    }
+
+    // Validate new password
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    const result = await memberResetPasswordService(identifier, otp, newPassword);
+
+    if (result.success) {
+      return res.status(200).json(result);
+    } else {
+      return res.status(400).json(result);
+    }
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   adminCreateMember,
   getAdminMembers,
   memberLogin,
   adminUpdateMember,
-  adminDeleteMember
+  adminDeleteMember,
+  memberForgotPassword,
+  memberResetPassword
 };

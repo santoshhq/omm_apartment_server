@@ -6,7 +6,9 @@ const {
   getAdminMembers,
   memberLogin,
   adminUpdateMember,
-  adminDeleteMember
+  adminDeleteMember,
+  memberForgotPassword,
+  memberResetPassword
 } = require('../../controllers/auth.controllers/adminMember.controllers');
 
 // 👥 Admin Creates Member (Auto-generates User ID, Admin sets Password)
@@ -20,6 +22,14 @@ router.get('/admin/:adminId', getAdminMembers);
 // 🔐 Member Login with Admin-Created Credentials
 // POST: /api/admin-members/member-login
 router.post('/member-login', memberLogin);
+
+// 🔑 Member Forgot Password - Send OTP
+// POST: /api/admin-members/member-forgot-password
+router.post('/member-forgot-password', memberForgotPassword);
+
+// 🔄 Member Reset Password with OTP
+// POST: /api/admin-members/member-reset-password
+router.post('/member-reset-password', memberResetPassword);
 
 // ✏️ Admin Updates Member (All fields except userId and password)
 // PUT: /api/admin-members/admin/:adminId/member/:memberId

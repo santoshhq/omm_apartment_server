@@ -103,6 +103,16 @@ const adminMemberProfileSchema = new Schema({
     type: String,
     default: 'Admin',
     enum: ['Admin', 'SelfRegistration']
+  },
+
+  // Password Reset OTP (for member forgot password)
+  resetPasswordOTP: {
+    type: String,
+    default: null
+  },
+  resetPasswordOTPExpiry: {
+    type: Date,
+    default: null
   }
 
 }, { 

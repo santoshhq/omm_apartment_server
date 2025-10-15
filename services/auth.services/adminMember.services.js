@@ -584,10 +584,251 @@ const adminDeleteMemberService = async (adminId, memberId) => {
   }
 };
 
+// Member Forgot Password - Send OTP service
+const memberForgotPasswordService = async (identifier) => {
+  console.log('\n=== 🔑 MEMBER FORGOT PASSWORD SERVICE CALLED ===');
+  console.log('🆔 Identifier (Email or User ID):', identifier);
+  console.log('🕒 Timestamp:', new Date().toISOString());
+
+  try {
+    let credentials;
+
+    // Check if identifier is email or userId
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmail = emailRegex.test(identifier);
+
+    if (isEmail) {
+      // Find by email
+      credentials = await AdminMemberCredentials.findOne({
+        email: identifier.toLowerCase().trim(),
+        isActive: true
+      }).populate('memberProfileId');
+
+      console.log('🔍 Searching by Email:', identifier);
+    } else {
+      // Find by userId
+      credentials = await AdminMemberCredentials.findOne({
+        userId: identifier,
+        isActive: true
+      }).populate('memberProfileId');
+
+      console.log('🔍 Searching by User ID:', identifier);
+    }
+
+    console.log('🔍 Member Credentials Found:', credentials ? 'Yes' : 'No');
+    if (credentials) {
+      console.log('👤 Member Profile ID:', credentials.memberProfileId._id);
+      console.log('🆔 User ID:', credentials.userId);
+      console.log('📧 Email:', credentials.email);
+      console.log('✅ Is Active:', credentials.isActive);
+    }
+
+    if (!credentials) {
+      console.log('❌ MEMBER CREDENTIALS NOT FOUND OR INACTIVE');
+      const errorMessage = isEmail
+        ? 'No member found with this email address'
+        : 'No member found with this user ID';
+      return {
+        success: false,
+        message: errorMessage
+      };
+    }
+
+    if (!credentials.memberProfileId) {
+      console.log('❌ MEMBER PROFILE NOT FOUND - Credentials corrupted');
+      return {
+        success: false,
+        message: 'Member profile not found. Please contact administrator.'
+      };
+    }
+
+    // Generate OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    console.log('🔢 Generated Reset OTP:', otp);
+    console.log('⏰ OTP Expires At:', otpExpiry.toISOString());
+    console.log('📧 OTP for Identifier:', identifier);
+
+    // Store OTP in member profile (since credentials don't have OTP fields)
+    credentials.memberProfileId.resetPasswordOTP = otp;
+    credentials.memberProfileId.resetPasswordOTPExpiry = otpExpiry;
+    await credentials.memberProfileId.save();
+
+    console.log('💾 OTP stored in member profile');
+
+    return {
+      success: true,
+      message: `Password reset OTP sent to your registered email. Please verify within 10 minutes.`,
+      data: {
+        userId: credentials.userId, // Return userId for the reset step
+        email: credentials.email,
+        otp: otp, // In production, send this via email
+        expiresAt: otpExpiry
+      }
+    };
+
+  } catch (error) {
+    console.log('❌ ERROR in memberForgotPasswordService:', error.message);
+    return {
+      success: false,
+      message: 'Error sending password reset OTP',
+      error: error.message
+    };
+  }
+};
+
+// Member Reset Password with OTP service
+const memberResetPasswordService = async (identifier, otp, newPassword) => {
+  console.log('\n=== 🔄 MEMBER RESET PASSWORD SERVICE CALLED ===');
+  console.log('🆔 Identifier (User ID or Email):', identifier);
+  console.log('🔢 Provided Reset OTP:', otp);
+  console.log('🔒 New Password Length:', newPassword ? newPassword.length : 0, 'characters');
+  console.log('🕒 Timestamp:', new Date().toISOString());
+
+  try {
+    let credentials;
+
+    // Check if identifier is email or userId
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmail = emailRegex.test(identifier);
+
+    if (isEmail) {
+      // Find by email
+      credentials = await AdminMemberCredentials.findOne({
+        email: identifier.toLowerCase().trim(),
+        isActive: true
+      }).populate('memberProfileId');
+    } else {
+      // Find by userId
+      credentials = await AdminMemberCredentials.findOne({
+        userId: identifier,
+        isActive: true
+      }).populate('memberProfileId');
+    }
+
+    console.log('🔍 Member Credentials Found:', credentials ? 'Yes' : 'No');
+    if (credentials) {
+      console.log('👤 Member Profile ID:', credentials.memberProfileId._id);
+      console.log('🆔 User ID:', credentials.userId);
+      console.log('📧 Member Email:', credentials.email);
+      console.log('🔑 Has Reset OTP:', !!credentials.memberProfileId.resetPasswordOTP);
+      console.log('⏰ Reset OTP Expiry:', credentials.memberProfileId.resetPasswordOTPExpiry ? new Date(credentials.memberProfileId.resetPasswordOTPExpiry).toISOString() : 'Not set');
+    }
+
+    if (!credentials) {
+      console.log('❌ MEMBER CREDENTIALS NOT FOUND OR INACTIVE');
+      return {
+        success: false,
+        message: 'Member account not found or inactive'
+      };
+    }
+
+    if (!credentials.memberProfileId) {
+      console.log('❌ MEMBER PROFILE NOT FOUND - Credentials corrupted');
+      return {
+        success: false,
+        message: 'Member profile not found. Please contact administrator.'
+      };
+    }
+
+    // Check if reset OTP exists
+    if (!credentials.memberProfileId.resetPasswordOTP || !credentials.memberProfileId.resetPasswordOTPExpiry) {
+      console.log('❌ NO RESET OTP REQUEST FOUND');
+      return {
+        success: false,
+        message: 'No password reset request found. Please request a new OTP.'
+      };
+    }
+
+    // Check if OTP is expired
+    const currentTime = new Date();
+    const isExpired = credentials.memberProfileId.resetPasswordOTPExpiry < currentTime;
+    console.log('⏰ Current Time:', currentTime.toISOString());
+    console.log('⏳ OTP Expiry Time:', new Date(credentials.memberProfileId.resetPasswordOTPExpiry).toISOString());
+    console.log('🕐 Is OTP Expired:', isExpired);
+
+    if (isExpired) {
+      console.log('❌ OTP EXPIRED - Clearing expired OTP');
+      // Clear expired OTP
+      credentials.memberProfileId.resetPasswordOTP = undefined;
+      credentials.memberProfileId.resetPasswordOTPExpiry = undefined;
+      await credentials.memberProfileId.save();
+      return {
+        success: false,
+        message: 'OTP expired. Please request a new password reset OTP.'
+      };
+    }
+
+    console.log('🔍 OTP VERIFICATION:');
+    console.log('   📊 Stored OTP:', credentials.memberProfileId.resetPasswordOTP);
+    console.log('   📥 Provided OTP:', otp);
+    console.log('   🎯 OTPs Match:', credentials.memberProfileId.resetPasswordOTP === otp);
+
+    if (credentials.memberProfileId.resetPasswordOTP !== otp) {
+      console.log('❌ INVALID OTP - Reset password failed');
+      return {
+        success: false,
+        message: 'Invalid OTP'
+      };
+    }
+
+    // Validate new password
+    if (!newPassword || newPassword.length < 6) {
+      console.log('❌ INVALID PASSWORD - Too short');
+      return {
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      };
+    }
+
+    console.log('✅ OTP VERIFIED - Updating password');
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
+    // Update password in credentials
+    credentials.password = newPassword; // Store plain password for admin reference
+    credentials.hashedPassword = hashedPassword;
+    credentials.passwordSetByAdmin = false; // Now member has set their own password
+
+    // Clear OTP
+    credentials.memberProfileId.resetPasswordOTP = undefined;
+    credentials.memberProfileId.resetPasswordOTPExpiry = undefined;
+
+    // Save both
+    await credentials.save();
+    await credentials.memberProfileId.save();
+
+    console.log('💾 Password updated successfully');
+    console.log('🧹 OTP cleared from member profile');
+
+    return {
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.',
+      data: {
+        userId: credentials.userId,
+        email: credentials.email,
+        passwordUpdatedAt: new Date()
+      }
+    };
+
+  } catch (error) {
+    console.log('❌ ERROR in memberResetPasswordService:', error.message);
+    return {
+      success: false,
+      message: 'Error resetting password',
+      error: error.message
+    };
+  }
+};
+
 module.exports = {
   adminCreateMemberService,
   getAdminMembersService,
   memberLoginService,
   adminUpdateMemberService,
-  adminDeleteMemberService
+  adminDeleteMemberService,
+  memberForgotPasswordService,
+  memberResetPasswordService
 };
