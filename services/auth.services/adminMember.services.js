@@ -248,6 +248,76 @@ const getAdminMembersService = async (adminId) => {
   }
 };
 
+// Get Individual Member Profile Service
+const getMemberProfileService = async (identifier) => {
+  console.log('\n=== 👤 GET MEMBER PROFILE SERVICE CALLED ===');
+  console.log('🆔 Identifier:', identifier);
+
+  try {
+    let member;
+
+    // Check if identifier is MongoDB ObjectId (memberId) or userId
+    const mongoose = require('mongoose');
+    const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
+
+    if (isObjectId) {
+      // Search by member profile ID
+      console.log('🔍 Searching by Member Profile ID');
+      member = await AdminMemberProfile.findById(identifier)
+        .populate('memberCredentialsId', 'userId email isActive lastLogin loginCount passwordSetByAdmin createdAt')
+        .populate('createdByAdminId', 'firstName lastName email');
+    } else {
+      // Search by userId
+      console.log('🔍 Searching by User ID');
+      const credentials = await AdminMemberCredentials.findOne({ userId: identifier, isActive: true })
+        .populate('memberProfileId')
+        .populate('createdByAdminId', 'firstName lastName email');
+
+      if (credentials) {
+        member = credentials.memberProfileId;
+        // Add credentials info to the member object
+        member = {
+          ...member.toObject(),
+          credentials: {
+            userId: credentials.userId,
+            email: credentials.email,
+            isActive: credentials.isActive,
+            lastLogin: credentials.lastLogin,
+            loginCount: credentials.loginCount,
+            passwordSetByAdmin: credentials.passwordSetByAdmin,
+            createdAt: credentials.createdAt
+          },
+          createdByAdmin: credentials.createdByAdminId
+        };
+      }
+    }
+
+    if (!member) {
+      console.log('❌ MEMBER NOT FOUND');
+      return {
+        success: false,
+        message: 'Member not found'
+      };
+    }
+
+    console.log('✅ Member profile retrieved successfully');
+
+    return {
+      success: true,
+      message: 'Member profile retrieved successfully',
+      data: member
+    };
+
+  } catch (error) {
+    console.log('❌ ERROR in getMemberProfileService:', error.message);
+    return {
+      success: false,
+      message: 'Error retrieving member profile',
+      error: error.message
+    };
+  }
+};
+
 // Member Login with Admin-Created Credentials
 const memberLoginService = async (userId, password) => {
   console.log('\n=== 🔐 MEMBER LOGIN SERVICE CALLED ===');
@@ -826,6 +896,7 @@ const memberResetPasswordService = async (identifier, otp, newPassword) => {
 module.exports = {
   adminCreateMemberService,
   getAdminMembersService,
+  getMemberProfileService,  // Add this
   memberLoginService,
   adminUpdateMemberService,
   adminDeleteMemberService,

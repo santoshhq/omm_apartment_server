@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   adminCreateMember,
   getAdminMembers,
+  getMemberProfile,  // Add this
   memberLogin,
   adminUpdateMember,
   adminDeleteMember,
@@ -19,7 +20,11 @@ router.post('/create', adminCreateMember);
 // GET: /api/admin-members/admin/:adminId
 router.get('/admin/:adminId', getAdminMembers);
 
-// 🔐 Member Login with Admin-Created Credentials
+// � Get Individual Member Profile
+// GET: /api/admin-members/profile/:identifier
+router.get('/profile/:identifier', getMemberProfile);
+
+// �🔐 Member Login with Admin-Created Credentials
 // POST: /api/admin-members/member-login
 router.post('/member-login', memberLogin);
 

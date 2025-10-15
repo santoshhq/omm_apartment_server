@@ -1,14 +1,13 @@
-const { 
+const {
   adminCreateMemberService,
   getAdminMembersService,
+  getMemberProfileService,  // Add this
   memberLoginService,
   adminUpdateMemberService,
   adminDeleteMemberService,
   memberForgotPasswordService,
   memberResetPasswordService
-} = require('../../services/auth.services/adminMember.services');
-
-// Admin Creates Member Controller
+} = require('../../services/auth.services/adminMember.services');// Admin Creates Member Controller
 const adminCreateMember = async (req, res) => {
   try {
     const {
@@ -118,6 +117,42 @@ const getAdminMembers = async (req, res) => {
     }
 
   } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get Individual Member Profile Controller
+const getMemberProfile = async (req, res) => {
+  try {
+    const { identifier } = req.params; // Can be userId or memberId (MongoDB ObjectId)
+
+    console.log('\n=== 👤 GET MEMBER PROFILE CONTROLLER CALLED ===');
+    console.log('🆔 Identifier from params:', identifier);
+
+    if (!identifier) {
+      console.log('❌ No identifier provided');
+      return res.status(400).json({
+        success: false,
+        message: 'Member identifier (userId or memberId) is required'
+      });
+    }
+
+    const result = await getMemberProfileService(identifier);
+
+    if (result.success) {
+      console.log('✅ Member profile retrieved successfully');
+      return res.status(200).json(result);
+    } else {
+      console.log('❌ Member profile retrieval failed:', result.message);
+      return res.status(404).json(result);
+    }
+
+  } catch (error) {
+    console.log('❌ ERROR in getMemberProfile controller:', error.message);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -390,6 +425,7 @@ const memberResetPassword = async (req, res) => {
 module.exports = {
   adminCreateMember,
   getAdminMembers,
+  getMemberProfile,  // Add this
   memberLogin,
   adminUpdateMember,
   adminDeleteMember,
