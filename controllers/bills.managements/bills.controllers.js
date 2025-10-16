@@ -16,7 +16,24 @@ class BillsController {
 
 	static async getAllBills(req, res) {
 		try {
-			const { adminId } = req.params;
+			let { adminId } = req.params;
+
+			// Handle case where adminId might be a stringified object like "{_id: 68ef28791fc4a2f925df3e3d, email: admin@example.com}"
+			if (typeof adminId === 'string' && adminId.startsWith('{') && adminId.includes('_id')) {
+				try {
+					// Extract the _id value from the object string
+					const idMatch = adminId.match(/_id:\s*([a-f0-9]{24})/i);
+					if (idMatch && idMatch[1]) {
+						adminId = idMatch[1];
+						console.log('Extracted adminId from object string:', adminId);
+					} else {
+						console.log('Could not extract _id from adminId string:', adminId);
+					}
+				} catch (parseError) {
+					console.log('Failed to parse adminId object string:', adminId, parseError.message);
+				}
+			}
+
 			const result = await BillsService.getAllBills(adminId);
 			return res.status(result.status ? 200 : 400).json(result);
 		} catch (error) {

@@ -1,23 +1,62 @@
 const BillRequest = require('../../models/bills.managements/billrequests');
+const AdminMemberCredentials = require('../../models/auth.models/adminMemberCredentials');
+const AdminMemberProfile = require('../../models/auth.models/adminMemberProfile');
 class BillRequestService {
     static async createBillRequest({ userId, billId, transactionId, paymentapp, PaymentAppName }) {
         try {
             console.log('\n=== 📋 CREATE BILL REQUEST SERVICE CALLED ===');
-            console.log('👤 User ID:', userId);
+            console.log('👤 User ID (string):', userId);
             console.log('💳 Bill ID:', billId);
             console.log('🔢 Transaction ID:', transactionId);
             console.log('💰 Payment App:', paymentapp);
+
+            // Convert string userId to ObjectId by finding the member profile
+            let memberProfileId = userId;
+
+            // Check if userId is a string (not ObjectId)
+            if (typeof userId === 'string' && !userId.match(/^[0-9a-fA-F]{24}$/)) {
+                console.log('🔄 Converting string userId to ObjectId...');
+
+                // Find member credentials by userId string
+                const credentials = await AdminMemberCredentials.findOne({
+                    userId: userId,
+                    isActive: true
+                });
+
+                if (!credentials) {
+                    console.log('❌ Member credentials not found for userId:', userId);
+                    return {
+                        status: false,
+                        message: 'Member not found or inactive'
+                    };
+                }
+
+                if (!credentials.memberProfileId) {
+                    console.log('❌ Member profile not linked for userId:', userId);
+                    return {
+                        status: false,
+                        message: 'Member profile not found'
+                    };
+                }
+
+                memberProfileId = credentials.memberProfileId;
+                console.log('✅ Converted to memberProfileId:', memberProfileId);
+            }
+
             const newBillRequest = new BillRequest({
-                userId,
+                userId: memberProfileId, // Use the ObjectId
                 billId,
                 transactionId,
                 paymentapp,
                 PaymentAppName
             });
+
             await newBillRequest.save();
+
             // Populate user and bill details for the response
             await newBillRequest.populate('userId', 'firstName lastName flatNo floor mobile');
             await newBillRequest.populate('billId', 'billtitle billdescription billamount duedate');
+
             console.log('✅ Bill request created successfully:', newBillRequest._id);
             return {
                 status: true,
@@ -29,17 +68,81 @@ class BillRequestService {
             return { status: false, message: 'Error creating bill request', error: error.message };
         }
     }
-    static async getAllBillRequests() {
+    static async getAllBillRequests(adminId) {
         try {
             console.log('\n=== 📋 GET ALL BILL REQUESTS SERVICE CALLED ===');
-            console.log('🔍 Filters: {}');
-            const billRequests = await BillRequest.find()
+            console.log('👨‍💼 Admin ID:', adminId);
+
+            let filter = {};
+            let billRequests;
+
+            if (adminId) {
+                // Find all member profiles created by this admin
+                const memberProfiles = await AdminMemberProfile.find({
+                    createdByAdminId: adminId
+                }).select('_id');
+
+                const memberProfileIds = memberProfiles.map(profile => profile._id);
+
+                console.log('� Found', memberProfileIds.length, 'member profiles for admin');
+
+                if (memberProfileIds.length === 0) {
+                    console.log('📊 No members found for this admin');
+                    return { status: true, data: [], message: 'No bill requests found for this admin' };
+                }
+
+                filter = { userId: { $in: memberProfileIds } };
+                console.log('🔍 Filtering bill requests by member profiles:', memberProfileIds);
+            } else {
+                console.log('🔍 No admin filter - getting all bill requests');
+            }
+
+            billRequests = await BillRequest.find(filter)
                 .populate('userId', 'firstName lastName flatNo floor mobile')
-                .populate('billId', 'billtitle billdescription billamount duedate');
+                .populate('billId', 'billtitle billdescription billamount duedate')
+                .sort({ createdAt: -1 });
+
             console.log('📊 Total bill requests found:', billRequests.length);
             return { status: true, data: billRequests };
         } catch (error) {
             console.log('❌ Error fetching bill requests:', error.message);
+            return { status: false, message: 'Error fetching bill requests', error: error.message };
+        }
+    }
+
+    static async getBillRequestsByAdmin(adminId) {
+        try {
+            console.log('\n=== 📋 GET BILL REQUESTS BY ADMIN SERVICE CALLED ===');
+            console.log('👨‍💼 Admin ID:', adminId);
+
+            // Validate adminId format
+            const mongoose = require('mongoose');
+            if (!mongoose.Types.ObjectId.isValid(adminId)) {
+                return { status: false, message: 'Invalid admin ID format' };
+            }
+
+            // Find bill requests where the user was created by this admin
+            const billRequests = await BillRequest.find()
+                .populate({
+                    path: 'userId',
+                    match: { createdByAdminId: adminId },
+                    select: 'firstName lastName flatNo floor mobile createdByAdminId'
+                })
+                .populate('billId', 'billtitle billdescription billamount duedate')
+                .sort({ createdAt: -1 });
+
+            // Filter out requests where userId is null (user not created by this admin)
+            const filteredRequests = billRequests.filter(request => request.userId !== null);
+
+            console.log(`📊 Found ${filteredRequests.length} bill requests for admin ${adminId}`);
+
+            return {
+                status: true,
+                message: `Found ${filteredRequests.length} bill requests for this admin`,
+                data: filteredRequests
+            };
+        } catch (error) {
+            console.log('❌ Error fetching bill requests by admin:', error.message);
             return { status: false, message: 'Error fetching bill requests', error: error.message };
         }
     }

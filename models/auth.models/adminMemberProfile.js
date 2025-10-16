@@ -5,6 +5,14 @@ const { Schema } = mongoose;
 
 // Admin-Created Members Profile Schema
 const adminMemberProfileSchema = new Schema({
+  // User ID (6-digit unique identifier)
+  userId: { 
+    type: String, 
+    required: true,
+    unique: true,
+    trim: true 
+  },
+
   // Basic Profile Information
   profileImage: { 
     type: String, 
