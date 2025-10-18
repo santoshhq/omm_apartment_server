@@ -1,6 +1,7 @@
 const {
   createAmenityService,
   getAllAmenitiesService,
+  getAllAmenitiesPublicService,
   getAmenityByIdService,
   updateAmenityService,
   deleteAmenityService,
@@ -139,6 +140,34 @@ const getAllAmenities = async (req, res) => {
 
   } catch (error) {
     console.log('❌ ERROR in getAllAmenities controller:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get All Amenities for Public Users (Active Only)
+const getAllAmenitiesPublic = async (req, res) => {
+  try {
+    console.log('\n🌐 GET ALL AMENITIES PUBLIC CONTROLLER CALLED');
+    console.log('🔍 Query params:', req.query);
+
+    const filters = req.query;
+
+    const result = await getAllAmenitiesPublicService(filters);
+
+    if (result.success) {
+      console.log('✅ Public amenities retrieved successfully');
+      return res.status(200).json(result);
+    } else {
+      console.log('❌ Failed to retrieve public amenities:', result.message);
+      return res.status(400).json(result);
+    }
+
+  } catch (error) {
+    console.log('❌ ERROR in getAllAmenitiesPublic controller:', error.message);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -363,6 +392,7 @@ const toggleAmenityStatus = async (req, res) => {
 module.exports = {
   createAmenity,
   getAllAmenities,
+  getAllAmenitiesPublic,
   getAmenityById,
   updateAmenity,
   deleteAmenity,

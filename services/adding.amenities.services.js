@@ -254,6 +254,73 @@ const getAllAmenitiesService = async (adminId, filters = {}) => {
   }
 };
 
+// Get All Amenities for Public Users (Active Only)
+const getAllAmenitiesPublicService = async (filters = {}) => {
+  try {
+    console.log('\n=== 🌐 GET ALL AMENITIES PUBLIC SERVICE CALLED ===');
+    console.log('🔍 Filters:', JSON.stringify(filters, null, 2));
+
+    // Build query - only active amenities for public users
+    const query = { active: true };
+
+    // Apply additional filters if provided
+    if (filters.search) {
+      query.$or = [
+        { name: { $regex: filters.search, $options: 'i' } },
+        { description: { $regex: filters.search, $options: 'i' } },
+        { location: { $regex: filters.search, $options: 'i' } }
+      ];
+    }
+
+    if (filters.bookingType) {
+      query.bookingType = filters.bookingType;
+    }
+
+    if (filters.minCapacity) {
+      query.capacity = { ...query.capacity, $gte: parseInt(filters.minCapacity) };
+    }
+
+    if (filters.maxCapacity) {
+      query.capacity = { ...query.capacity, $lte: parseInt(filters.maxCapacity) };
+    }
+
+    console.log('🔍 Final Query:', JSON.stringify(query, null, 2));
+
+    const amenities = await Amenity.find(query)
+      .sort({ createdAt: -1 })
+      .select('-createdByAdminId -updatedAt'); // Exclude sensitive fields
+
+    console.log('📊 Total public amenities found:', amenities.length);
+
+    return {
+      success: true,
+      message: 'Amenities fetched successfully',
+      data: amenities.map(amenity => ({
+        _id: amenity._id,
+        name: amenity.name,
+        description: amenity.description,
+        location: amenity.location,
+        capacity: amenity.capacity,
+        bookingType: amenity.bookingType,
+        hourlyRate: amenity.hourlyRate,
+        features: amenity.features,
+        imagePaths: amenity.imagePaths,
+        weeklySchedule: amenity.weeklySchedule,
+        active: amenity.active,
+        createdAt: amenity.createdAt
+      }))
+    };
+
+  } catch (error) {
+    console.log('❌ ERROR in getAllAmenitiesPublicService:', error.message);
+    return {
+      success: false,
+      message: 'Error fetching amenities',
+      error: error.message
+    };
+  }
+};
+
 // Get Single Amenity Service
 const getAmenityByIdService = async (adminId, amenityId) => {
   try {
@@ -583,6 +650,7 @@ const toggleAmenityStatusService = async (adminId, amenityId) => {
 module.exports = {
   createAmenityService,
   getAllAmenitiesService,
+  getAllAmenitiesPublicService,
   getAmenityByIdService,
   updateAmenityService,
   deleteAmenityService,

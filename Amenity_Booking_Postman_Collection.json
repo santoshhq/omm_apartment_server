@@ -1,0 +1,293 @@
+{
+  "info": {
+    "name": "Amenity Booking System API",
+    "description": "Complete API testing collection for amenity booking with date and time selection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "adminId",
+      "value": "replace_with_actual_admin_id",
+      "type": "string"
+    },
+    {
+      "key": "memberId",
+      "value": "replace_with_actual_member_id",
+      "type": "string"
+    },
+    {
+      "key": "amenityId",
+      "value": "replace_with_created_amenity_id",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "replace_with_created_booking_id",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏢 Amenity Management",
+      "item": [
+        {
+          "name": "Create Amenity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Swimming Pool\",\n  \"description\": \"Olympic-sized swimming pool with temperature control\",\n  \"location\": \"Ground Floor, East Wing\",\n  \"capacity\": 50,\n  \"hourlyRate\": 100,\n  \"bookingType\": \"shared\",\n  \"weeklySchedule\": {\n    \"monday\": { \"open\": \"06:00\", \"close\": \"22:00\", \"closed\": false },\n    \"tuesday\": { \"open\": \"06:00\", \"close\": \"22:00\", \"closed\": false },\n    \"wednesday\": { \"open\": \"06:00\", \"close\": \"22:00\", \"closed\": false },\n    \"thursday\": { \"open\": \"06:00\", \"close\": \"22:00\", \"closed\": false },\n    \"friday\": { \"open\": \"06:00\", \"close\": \"22:00\", \"closed\": false },\n    \"saturday\": { \"open\": \"08:00\", \"close\": \"20:00\", \"closed\": false },\n    \"sunday\": { \"open\": \"08:00\", \"close\": \"20:00\", \"closed\": false }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/amenities/admin/{{adminId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["amenities", "admin", "{{adminId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Amenities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/amenities/admin/{{adminId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["amenities", "admin", "{{adminId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Booking Management",
+      "item": [
+        {
+          "name": "Get Available Time Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/amenity/{{amenityId}}/available/2025-10-25",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "amenity", "{{amenityId}}", "available", "2025-10-25"]
+            },
+            "description": "Get available 30-minute time slots for a specific date and amenity"
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amenityId\": \"{{amenityId}}\",\n  \"userId\": \"{{memberId}}\",\n  \"bookingType\": \"shared\",\n  \"date\": \"2025-10-25\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:30\",\n  \"paymentType\": \"cash\",\n  \"amount\": 150\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "create"]
+            },
+            "description": "Create a new amenity booking with date and time selection"
+          }
+        },
+        {
+          "name": "Get All Bookings (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "all"]
+            }
+          }
+        },
+        {
+          "name": "Get User's Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/user/{{memberId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "user", "{{memberId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get User's Upcoming Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/user/{{memberId}}/upcoming",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "user", "{{memberId}}", "upcoming"]
+            }
+          }
+        },
+        {
+          "name": "Get Amenity Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/amenity/{{amenityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "amenity", "{{amenityId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Booking Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\",\n  \"adminId\": \"{{adminId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/booking/{{bookingId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "booking", "{{bookingId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{memberId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/booking/{{bookingId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "booking", "{{bookingId}}", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧪 Test Cases",
+      "item": [
+        {
+          "name": "❌ Test: Past Date Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amenityId\": \"{{amenityId}}\",\n  \"userId\": \"{{memberId}}\",\n  \"bookingType\": \"shared\",\n  \"date\": \"2025-10-10\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\",\n  \"paymentType\": \"cash\",\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "create"]
+            },
+            "description": "Should fail: Booking date cannot be in the past"
+          }
+        },
+        {
+          "name": "❌ Test: Invalid Time Format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amenityId\": \"{{amenityId}}\",\n  \"userId\": \"{{memberId}}\",\n  \"bookingType\": \"shared\",\n  \"date\": \"2025-10-25\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"25:00\",\n  \"paymentType\": \"cash\",\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "create"]
+            },
+            "description": "Should fail: Invalid time format"
+          }
+        },
+        {
+          "name": "❌ Test: End Time Before Start Time",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amenityId\": \"{{amenityId}}\",\n  \"userId\": \"{{memberId}}\",\n  \"bookingType\": \"shared\",\n  \"date\": \"2025-10-25\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"10:00\",\n  \"paymentType\": \"cash\",\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "create"]
+            },
+            "description": "Should fail: End time must be after start time"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔧 Utilities",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "health"]
+            },
+            "description": "Check if booking API is running"
+          }
+        }
+      ]
+    }
+  ]
+}

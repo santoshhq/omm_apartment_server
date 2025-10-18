@@ -28,6 +28,60 @@ class AmenityBookingService {
                 };
             }
 
+            // Validate date format and logic
+            const bookingDate = new Date(date);
+            if (isNaN(bookingDate.getTime())) {
+                return {
+                    success: false,
+                    message: 'Invalid date format. Please provide a valid date.'
+                };
+            }
+
+            // Validate date is not in the past
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const bookingDateOnly = new Date(bookingDate);
+            bookingDateOnly.setHours(0, 0, 0, 0);
+            
+            if (bookingDateOnly < today) {
+                return {
+                    success: false,
+                    message: 'Booking date cannot be in the past. Please select a future date.'
+                };
+            }
+
+            // Validate time format and logic
+            if (!this.isValidTimeFormat(startTime) || !this.isValidTimeFormat(endTime)) {
+                return {
+                    success: false,
+                    message: 'Invalid time format. Please use HH:mm format (e.g., 09:00, 14:30).'
+                };
+            }
+
+            if (startTime >= endTime) {
+                return {
+                    success: false,
+                    message: 'End time must be after start time. Please select a valid time range.'
+                };
+            }
+
+            // Validate minimum booking duration (at least 30 minutes)
+            const duration = this.calculateBookingDuration(startTime, endTime);
+            if (duration < 0.5) {
+                return {
+                    success: false,
+                    message: 'Minimum booking duration is 30 minutes. Please select a longer time slot.'
+                };
+            }
+
+            // Validate maximum booking duration (max 8 hours)
+            if (duration > 8) {
+                return {
+                    success: false,
+                    message: 'Maximum booking duration is 8 hours. Please select a shorter time slot.'
+                };
+            }
+
             // Validate amenity exists and is active
             const amenity = await Amenity.findById(amenityId);
             if (!amenity) {
@@ -62,33 +116,6 @@ class AmenityBookingService {
                 return {
                     success: false,
                     message: `This amenity only supports ${amenity.bookingType} bookings`
-                };
-            }
-
-            // Validate date is not in the past
-            const bookingDate = new Date(date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            if (bookingDate < today) {
-                return {
-                    success: false,
-                    message: 'Booking date cannot be in the past'
-                };
-            }
-
-            // Validate time format and logic
-            if (!this.isValidTimeFormat(startTime) || !this.isValidTimeFormat(endTime)) {
-                return {
-                    success: false,
-                    message: 'Invalid time format. Use HH:mm format'
-                };
-            }
-
-            if (startTime >= endTime) {
-                return {
-                    success: false,
-                    message: 'End time must be after start time'
                 };
             }
 
@@ -220,7 +247,102 @@ class AmenityBookingService {
         }
     }
 
-    // 📋 GET ALL BOOKINGS (with filters)
+    // � GET AVAILABLE TIME SLOTS FOR A DATE
+    static async getAvailableSlots(amenityId, date) {
+        try {
+            console.log('\n=== 📅 GET AVAILABLE SLOTS SERVICE CALLED ===');
+            console.log('🏢 Amenity ID:', amenityId);
+            console.log('📅 Date:', date);
+
+            // Validate amenity exists and is active
+            const amenity = await Amenity.findById(amenityId);
+            if (!amenity) {
+                return {
+                    success: false,
+                    message: 'Amenity not found'
+                };
+            }
+
+            if (!amenity.active) {
+                return {
+                    success: false,
+                    message: 'Amenity is currently inactive'
+                };
+            }
+
+            // Validate date
+            const bookingDate = new Date(date);
+            if (isNaN(bookingDate.getTime())) {
+                return {
+                    success: false,
+                    message: 'Invalid date format'
+                };
+            }
+
+            // Check if date is in the past
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const checkDate = new Date(bookingDate);
+            checkDate.setHours(0, 0, 0, 0);
+            
+            if (checkDate < today) {
+                return {
+                    success: false,
+                    message: 'Cannot check availability for past dates'
+                };
+            }
+
+            // Get day of week and schedule
+            const dayOfWeek = bookingDate.toLocaleDateString('en', { weekday: 'long' }).toLowerCase();
+            const daySchedule = amenity.weeklySchedule.get(dayOfWeek);
+            
+            if (!daySchedule || daySchedule.closed) {
+                return {
+                    success: true,
+                    data: {
+                        date: date,
+                        dayOfWeek: dayOfWeek,
+                        isClosed: true,
+                        message: `Amenity is closed on ${dayOfWeek}s`,
+                        availableSlots: []
+                    }
+                };
+            }
+
+            // Get existing bookings for this date
+            const existingBookings = await AmenityBooking.find({
+                amenityId: amenityId,
+                date: bookingDate,
+                status: { $in: ['accepted', 'pending'] }
+            });
+
+            // Generate time slots (30-minute intervals)
+            const availableSlots = this.generateAvailableSlots(daySchedule.open, daySchedule.close, existingBookings, amenity.bookingType);
+
+            console.log('✅ Available slots generated:', availableSlots.length);
+
+            return {
+                success: true,
+                data: {
+                    date: date,
+                    dayOfWeek: dayOfWeek,
+                    operatingHours: `${daySchedule.open} - ${daySchedule.close}`,
+                    bookingType: amenity.bookingType,
+                    availableSlots: availableSlots
+                }
+            };
+
+        } catch (error) {
+            console.log('❌ Error in getAvailableSlots service:', error.message);
+            return {
+                success: false,
+                message: 'Error fetching available slots',
+                error: error.message
+            };
+        }
+    }
+
+    // �📋 GET ALL BOOKINGS (with filters)
     static async getAllBookings(filters = {}) {
         try {
             console.log('\n=== 📋 GET ALL BOOKINGS SERVICE CALLED ===');
@@ -474,6 +596,64 @@ class AmenityBookingService {
         const endTotalMinutes = endHours * 60 + endMinutes;
         
         return (endTotalMinutes - startTotalMinutes) / 60; // Return hours
+    }
+
+    static generateAvailableSlots(openTime, closeTime, existingBookings, bookingType) {
+        const slots = [];
+        const [openHour, openMin] = openTime.split(':').map(Number);
+        const [closeHour, closeMin] = closeTime.split(':').map(Number);
+        
+        let currentHour = openHour;
+        let currentMin = openMin;
+        
+        // Generate 30-minute slots
+        while (currentHour < closeHour || (currentHour === closeHour && currentMin < closeMin)) {
+            const startTime = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+            
+            // Calculate end time (30 minutes later)
+            let endMin = currentMin + 30;
+            let endHour = currentHour;
+            if (endMin >= 60) {
+                endMin = 0;
+                endHour += 1;
+            }
+            
+            // Don't go beyond closing time
+            if (endHour > closeHour || (endHour === closeHour && endMin > closeMin)) {
+                break;
+            }
+            
+            const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+            
+            // Check if this slot conflicts with existing bookings
+            let isAvailable = true;
+            for (const booking of existingBookings) {
+                if (this.doTimesOverlap(startTime, endTime, booking.startTime, booking.endTime)) {
+                    if (bookingType === 'exclusive' || booking.bookingType === 'exclusive') {
+                        isAvailable = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (isAvailable) {
+                slots.push({
+                    startTime: startTime,
+                    endTime: endTime,
+                    duration: 0.5, // 30 minutes
+                    available: true
+                });
+            }
+            
+            // Move to next slot
+            currentMin += 30;
+            if (currentMin >= 60) {
+                currentMin = 0;
+                currentHour += 1;
+            }
+        }
+        
+        return slots;
     }
 }
 

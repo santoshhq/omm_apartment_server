@@ -255,7 +255,38 @@ class AmenityBookingController {
         }
     }
 
-    // 📈 GET BOOKING ANALYTICS
+    // � GET AVAILABLE TIME SLOTS
+    static async getAvailableSlots(req, res) {
+        try {
+            console.log('\n=== 📅 GET AVAILABLE SLOTS CONTROLLER CALLED ===');
+            console.log('🏢 Amenity ID:', req.params.amenityId);
+            console.log('📅 Date:', req.params.date);
+
+            const { amenityId, date } = req.params;
+
+            if (!amenityId || !date) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Amenity ID and date are required'
+                });
+            }
+
+            const result = await AmenityBookingService.getAvailableSlots(amenityId, date);
+            
+            const statusCode = result.success ? 200 : 400;
+            return res.status(statusCode).json(result);
+
+        } catch (error) {
+            console.log('❌ ERROR in getAvailableSlots controller:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: error.message
+            });
+        }
+    }
+
+    // �📈 GET BOOKING ANALYTICS
     static async getBookingAnalytics(req, res) {
         try {
             console.log('\n=== 📈 GET BOOKING ANALYTICS CONTROLLER CALLED ===');

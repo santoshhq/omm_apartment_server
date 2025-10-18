@@ -26,6 +26,7 @@ router.get('/amenity/:amenityId/today', (req, res, next) => {                   
     req.query.endDate = today;
     AmenityBookingController.getAmenityBookings(req, res, next);
 });
+router.get('/amenity/:amenityId/available/:date', AmenityBookingController.getAvailableSlots); // Get available slots for amenity on date
 
 // 📊 ANALYTICS ROUTES
 router.get('/analytics', AmenityBookingController.getBookingAnalytics);           // Get booking analytics
@@ -67,6 +68,7 @@ router.get('/health', (req, res) => {
             'DELETE /booking/:id/cancel': 'Cancel booking',
             'GET /user/:userId': 'Get user bookings',
             'GET /amenity/:amenityId': 'Get amenity bookings',
+            'GET /amenity/:amenityId/available/:date': 'Get available time slots for amenity on date',
             'GET /analytics': 'Get booking analytics',
             'GET /pending': 'Get pending bookings',
             'GET /accepted': 'Get accepted bookings',
