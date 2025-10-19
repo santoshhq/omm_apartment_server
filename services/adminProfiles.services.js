@@ -28,7 +28,7 @@ class createAdminProfile {
                 apartment,
                 phone,
                 address,
-                imagePath
+                imagePath,
             });
             await newProfile.save();
 

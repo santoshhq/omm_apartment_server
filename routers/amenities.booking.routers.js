@@ -9,7 +9,7 @@ router.post('/create', AmenityBookingController.createBooking);                 
 router.get('/all', AmenityBookingController.getAllBookings);                      // Get all bookings (admin)
 router.get('/booking/:id', AmenityBookingController.getBookingById);              // Get booking by ID
 router.put('/booking/:id/status', AmenityBookingController.updateBookingStatus);  // Update booking status (admin)
-router.delete('/booking/:id/cancel', AmenityBookingController.cancelBooking);     // Cancel booking (user)
+router.delete('/:bookingId/cancel', AmenityBookingController.cancelBooking);       // Cancel booking (user)
 
 // 👤 USER BOOKING ROUTES
 router.get('/user/:userId', AmenityBookingController.getUserBookings);            // Get user's bookings
@@ -65,7 +65,7 @@ router.get('/health', (req, res) => {
             'GET /all': 'Get all bookings',
             'GET /booking/:id': 'Get booking by ID',
             'PUT /booking/:id/status': 'Update booking status',
-            'DELETE /booking/:id/cancel': 'Cancel booking',
+            'DELETE /:bookingId/cancel': 'Cancel booking',
             'GET /user/:userId': 'Get user bookings',
             'GET /amenity/:amenityId': 'Get amenity bookings',
             'GET /amenity/:amenityId/available/:date': 'Get available time slots for amenity on date',

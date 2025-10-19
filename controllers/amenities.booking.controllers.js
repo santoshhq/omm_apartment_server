@@ -132,27 +132,28 @@ class AmenityBookingController {
     static async cancelBooking(req, res) {
         try {
             console.log('\n=== 🗑️ CANCEL BOOKING CONTROLLER CALLED ===');
-            console.log('🆔 Booking ID:', req.params.id);
+            console.log('🆔 Booking ID:', req.params.bookingId);
             console.log('📄 Request Body:', req.body);
+            console.log('🔍 Query params:', req.query);
 
-            const { id } = req.params;
-            const { userId } = req.body;
+            const { bookingId } = req.params;
+            const id = req.body.id || req.query.id;
 
-            if (!id) {
+            if (!bookingId) {
                 return res.status(400).json({
                     success: false,
                     message: 'Booking ID is required'
                 });
             }
 
-            if (!userId) {
+            if (!id) {
                 return res.status(400).json({
                     success: false,
-                    message: 'User ID is required'
+                    message: 'ID is required'
                 });
             }
 
-            const result = await AmenityBookingService.cancelBooking(id, userId);
+            const result = await AmenityBookingService.cancelBooking(bookingId, id);
             
             const statusCode = result.success ? 200 : 400;
             return res.status(statusCode).json(result);

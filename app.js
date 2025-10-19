@@ -63,7 +63,6 @@ app.use(`${API_PREFIX}/bookings`, amenityBookingRouter);
 const securityRouter = require('./routers/securityguards.routers');
 app.use(`${API_PREFIX}/security`, securityRouter);
 
-
 const housekeepingRouter = require('./routers/housekeeping.routers');
 app.use(`${API_PREFIX}/housekeeping`, housekeepingRouter);
 
