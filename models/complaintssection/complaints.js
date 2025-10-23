@@ -48,7 +48,7 @@ const complaintsSchema = new Schema({
     assignedToAdmin: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'adminSignup', 
-        required: false,  // Will be assigned later by system
+        required: true,  // Will be assigned later by system
         default: null
     },
     isCreatedByAdmin: {

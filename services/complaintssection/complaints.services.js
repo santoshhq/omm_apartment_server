@@ -206,7 +206,7 @@ class ComplaintService {
 
             const complaints = await Complaints.find(query)
                 .populate('userId', 'firstName lastName email mobile')
-                .populate('assignedToAdmin', 'firstName lastName email mobile')
+                .populate('assignedToAdmin')  // Remove specific fields since adminSignup doesn't have name fields
                 .sort({ createdAt: -1 });
 
             console.log('📊 Total complaints found for admin:', complaints.length);
@@ -434,18 +434,40 @@ class ComplaintService {
             console.log('👤 User ID:', userId);
 
             if (!userId) {
+                console.log('❌ User ID is missing or invalid');
                 return {
                     success: false,
                     message: 'User ID is required'
                 };
             }
 
-            const complaints = await Complaints.find({ userId })
+            console.log('🔍 Building query for user complaints...');
+            const query = { userId };
+            console.log('📋 Query:', JSON.stringify(query, null, 2));
+
+            console.log('🔄 Executing database query...');
+            const complaints = await Complaints.find(query)
                 .populate('userId', 'firstName lastName email mobile')
                 .populate('assignedToAdmin', 'firstName lastName email mobile')
                 .sort({ createdAt: -1 });
 
-            console.log('📊 Total complaints by user:', complaints.length);
+            console.log('📊 Total complaints found for user:', complaints.length);
+
+            if (complaints.length > 0) {
+                console.log('📋 Complaint details:');
+                complaints.forEach((complaint, index) => {
+                    console.log(`  ${index + 1}. ID: ${complaint._id}`);
+                    console.log(`     Title: ${complaint.title}`);
+                    console.log(`     Status: ${complaint.status}`);
+                    console.log(`     Assigned Admin: ${complaint.assignedToAdmin ? complaint.assignedToAdmin.firstName + ' ' + complaint.assignedToAdmin.lastName : 'Not assigned'}`);
+                    console.log(`     Created: ${complaint.createdAt}`);
+                    console.log('     ---');
+                });
+            } else {
+                console.log('📭 No complaints found for this user');
+            }
+
+            console.log('✅ User complaints retrieval completed successfully');
 
             return {
                 success: true,
@@ -456,6 +478,7 @@ class ComplaintService {
 
         } catch (error) {
             console.error('❌ Error retrieving user complaints:', error.message);
+            console.error('❌ Stack trace:', error.stack);
             return {
                 success: false,
                 message: 'Internal server error while retrieving user complaints',

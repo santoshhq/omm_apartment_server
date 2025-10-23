@@ -214,6 +214,36 @@ class ComplaintController {
         }
     }
 
+    // Get complaints by user ID
+    static async getUserComplaints(req, res) {
+        try {
+            console.log('\n=== 👤 GET USER COMPLAINTS CONTROLLER CALLED ===');
+            console.log('👤 User ID:', req.params.userId);
+
+            const { userId } = req.params;
+
+            if (!userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'User ID is required'
+                });
+            }
+
+            const result = await ComplaintService.getComplaintsByUser(userId);
+
+            const statusCode = result.success ? 200 : 400;
+            return res.status(statusCode).json(result);
+
+        } catch (error) {
+            console.log('❌ ERROR in getUserComplaints controller:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: error.message
+            });
+        }
+    }
+
     // Delete complaint and associated messages
     static async deleteComplaint(req, res) {
         try {
