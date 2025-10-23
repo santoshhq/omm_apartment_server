@@ -83,10 +83,36 @@ class EventCardService {
 
   // Get All Event Cards
  static async getAllEventCards(adminId = null, options = {}) {
-  const query = adminId ? { adminId } : {};
+  console.log('\n=== 🔍 GET ALL EVENT CARDS SERVICE DEBUG ===');
+  console.log('🔑 Input adminId:', adminId, 'Type:', typeof adminId);
+  console.log('⚙️ Options:', options);
+
+  let query = {};
+  if (adminId) {
+    // Ensure adminId is treated as ObjectId for proper comparison
+    if (typeof adminId === 'string' && adminId.match(/^[0-9a-fA-F]{24}$/)) {
+      // Convert to ObjectId for exact match
+      const mongoose = require('mongoose');
+      query.adminId = new mongoose.Types.ObjectId(adminId);
+      console.log('✅ Converted to ObjectId for query');
+    } else {
+      console.log('❌ Invalid adminId format:', adminId);
+      return { success: false, message: 'Invalid adminId format' };
+    }
+  }
+
+  console.log('🔍 MongoDB Query:', JSON.stringify(query, null, 2));
+
   const isLightweight = options.lightweight === true;
+  console.log('💡 Lightweight mode:', isLightweight);
 
   const eventCards = await eventCard.find(query).populate('adminId', 'firstName lastName email');
+  console.log('📊 Raw results count:', eventCards.length);
+
+  // Debug: Log adminIds of found events
+  eventCards.forEach((card, index) => {
+    console.log(`🎪 Event ${index + 1}: ID=${card._id}, adminId=${card.adminId}, name="${card.name}"`);
+  });
 
   const formattedCards = eventCards.map(card => ({
     id: card._id,
@@ -105,6 +131,7 @@ class EventCardService {
     createdAt: card.createdAt,
   }));
 
+  console.log('✅ Formatted results count:', formattedCards.length);
   return { success: true, data: formattedCards };
 }
 
@@ -383,6 +410,132 @@ class EventCardService {
         success: false, 
         message: 'Error toggling status', 
         error: error.message 
+      };
+    }
+  }
+
+  // Add Donation
+  static async addDonation(eventId, userId, amount, transactionId, upiApp, adminId) {
+    try {
+      console.log('\n=== � ADD DONATION SERVICE CALLED ===');
+      console.log('🎪 Event ID:', eventId);
+      console.log('� User ID:', userId);
+      console.log('💵 Amount:', amount);
+      console.log('🔑 Transaction ID:', transactionId);
+      console.log('📱 UPI App:', upiApp);
+      console.log('👨‍💼 Admin ID:', adminId);
+
+      // Validate required fields
+      if (!eventId || !userId || !amount || !transactionId || !upiApp || !adminId) {
+        return {
+          success: false,
+          message: 'All fields are required: eventId, userId, amount, transactionId, upiApp, adminId'
+        };
+      }
+
+      // Validate amount
+      const donationAmount = parseFloat(amount);
+      if (isNaN(donationAmount) || donationAmount <= 0) {
+        return {
+          success: false,
+          message: 'Amount must be a positive number'
+        };
+      }
+
+      // Check if event exists and is active
+      const event = await eventCard.findById(eventId);
+      if (!event) {
+        return {
+          success: false,
+          message: 'Event not found'
+        };
+      }
+
+      if (!event.status) {
+        return {
+          success: false,
+          message: 'Event is not active'
+        };
+      }
+
+      // Check if user exists
+      const AdminMemberProfile = require('../models/auth.models/adminMemberProfile');
+      const user = await AdminMemberProfile.findById(userId);
+      if (!user) {
+        return {
+          success: false,
+          message: 'User not found'
+        };
+      }
+
+      // Check if admin exists
+      const AdminSignup = require('../models/auth.models/signup');
+      const admin = await AdminSignup.findById(adminId);
+      if (!admin) {
+        return {
+          success: false,
+          message: 'Admin not found'
+        };
+      }
+
+      // Check for duplicate transaction ID
+      const existingDonation = await Donation.findOne({ transactionId });
+      if (existingDonation) {
+        return {
+          success: false,
+          message: 'Transaction ID already exists'
+        };
+      }
+
+      // Create donation
+      const newDonation = new Donation({
+        eventId,
+        userId,
+        transactionId: transactionId.trim(),
+        amount: donationAmount,
+        upiApp: upiApp.trim(),
+        adminId
+      });
+
+      const savedDonation = await newDonation.save();
+
+      // Update event statistics
+      const allDonations = await Donation.find({ eventId, status: 'Accepted' });
+      const totalCollected = allDonations.reduce((sum, donation) => sum + donation.amount, 0);
+      const totalDonors = allDonations.length;
+      const averageDonation = totalDonors > 0 ? totalCollected / totalDonors : 0;
+
+      await eventCard.findByIdAndUpdate(eventId, {
+        collectedamount: totalCollected,
+        totalDonors,
+        averageDonation
+      });
+
+      console.log('✅ DONATION ADDED SUCCESSFULLY');
+      console.log('💰 Amount:', donationAmount);
+      console.log('� Updated event stats - Collected:', totalCollected, 'Donors:', totalDonors);
+
+      return {
+        success: true,
+        message: 'Donation added successfully',
+        data: {
+          donationId: savedDonation._id,
+          amount: savedDonation.amount,
+          status: savedDonation.status,
+          eventStats: {
+            collectedamount: totalCollected,
+            totalDonors,
+            averageDonation
+          }
+        }
+      };
+
+    } catch (error) {
+      console.log('❌ ERROR in addDonation:', error.message);
+      return {
+        success: false,
+        message: 'Error adding donation',
+        error: error.message
       };
     }
   }

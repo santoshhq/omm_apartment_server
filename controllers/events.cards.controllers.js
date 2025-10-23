@@ -5,25 +5,43 @@ class EventCardController {
   static async createEventCard(req, res) {
     try {
       console.log('\n=== 🎪 CREATE EVENT CARD CONTROLLER CALLED ===');
-      
-      // Get adminId from params (for new admin-specific routes) or body (for legacy)
-      const adminIdFromParams = req.params.adminId;
-      const { image, images, imagePaths, name, startdate, enddate, description, targetamount, eventdetails, upiId, adminId: adminIdFromBody } = req.body;
-      
-      // Use adminId from params if available, otherwise from body (backward compatibility)
-      const adminId = adminIdFromParams || adminIdFromBody;
-      
-      console.log('🔑 Admin ID (from params):', adminIdFromParams);
-      console.log('🔑 Admin ID (from body):', adminIdFromBody);
+
+      // Get adminId from authenticated user (secure) or from params/body (legacy)
+      let adminId;
+
+      if (req.user && req.user.type === 'admin') {
+        // Secure: Use authenticated admin's ID
+        adminId = req.user._id;
+        console.log('🔐 Using authenticated admin ID:', adminId);
+      } else {
+        // Legacy: Get from params or body (less secure)
+        const adminIdFromParams = req.params.adminId;
+        const { adminId: adminIdFromBody } = req.body;
+        adminId = adminIdFromParams || adminIdFromBody;
+        console.log('⚠️ Using legacy admin ID from request:', adminId);
+        console.log('🔑 Admin ID (from params):', adminIdFromParams);
+        console.log('🔑 Admin ID (from body):', adminIdFromBody);
+      }
+
+      const { image, images, imagePaths, name, startdate, enddate, description, targetamount, eventdetails, upiId } = req.body;
+
       console.log('🔑 Final Admin ID used:', adminId);
 
       if (!adminId) {
         return res.status(400).json({
           success: false,
-          message: 'Admin ID is required'
+          message: 'Admin authentication required'
         });
       }
-      
+
+      // Validate required fields
+      if (!name || !startdate || !enddate || !description || !targetamount || !upiId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields: name, startdate, enddate, description, targetamount, upiId'
+        });
+      }
+
       // Use whichever image field is provided
       const imageData = images || imagePaths || image;
 
@@ -85,7 +103,7 @@ static async getAllEventCardsLegacy(req, res) {
     // Extract query parameters
     const { adminId, lightweight } = req.query;
     const isLightweight = lightweight === 'true'; // ✅ detect lightweight mode
-    console.log('🔑 Admin ID from query:', adminId);
+    console.log('🔑 Admin ID from query:', adminId, 'Type:', typeof adminId);
     console.log('💡 Lightweight mode:', isLightweight);
 
     // Validate adminId
@@ -111,7 +129,7 @@ static async getAllEventCardsLegacy(req, res) {
 
     // ✅ Success
     console.log(`✅ Event cards fetched successfully (${isLightweight ? 'lightweight' : 'full'} mode)`);
-    console.log(`📊 Total cards: ${result.data?.length || 0}`);
+    console.log(`📊 Total cards returned: ${result.data?.length || 0}`);
 
     return res.status(200).json(result);
 
@@ -214,10 +232,20 @@ static async getAllEventCardsLegacy(req, res) {
   // Add Donation
   static async addDonation(req, res) {
     try {
-      const { id } = req.params; // event id
-      const { userId, amount } = req.body;
+      console.log('\n=== 💰 ADD DONATION CONTROLLER CALLED ===');
+      
+      const { id: eventId } = req.params; // event id from URL
+      const { adminId } = req.params; // admin id from URL
+      const { userId, amount, transactionId, upiApp } = req.body;
+      
+      console.log('🎪 Event ID:', eventId);
+      console.log('👨‍💼 Admin ID:', adminId);
+      console.log('👤 User ID:', userId);
+      console.log('💵 Amount:', amount);
+      console.log('🔑 Transaction ID:', transactionId);
+      console.log('📱 UPI App:', upiApp);
 
-      const result = await EventCardService.addDonation(id, userId, amount);
+      const result = await EventCardService.addDonation(eventId, userId, amount, transactionId, upiApp, adminId);
       if (!result.success) {
         return res.status(400).json(result);
       }
