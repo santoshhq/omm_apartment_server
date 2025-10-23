@@ -72,4 +72,7 @@ app.use(`${API_PREFIX}/bills`, billsRouter);
 const billRequestsRouter = require('./routers/bills.managements/bill.requests.routers');
 app.use(`${API_PREFIX}/bill-requests`, billRequestsRouter);
 
+const idCardsRouter = require('./routers/idcards.managements.routers');
+app.use(`${API_PREFIX}/idcards`, idCardsRouter);
+
 module.exports=app;
