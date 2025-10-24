@@ -62,7 +62,6 @@ const idCardManagementSchema = new Schema({
 });
 
 // Add indexes for better query performance
-idCardManagementSchema.index({ cardNumber: 1 });
 idCardManagementSchema.index({ cardType: 1 });
 idCardManagementSchema.index({ memberId: 1, cardType: 1 });
 
