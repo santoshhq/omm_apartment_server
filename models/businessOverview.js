@@ -11,12 +11,6 @@ const businessOverviewSchema = new Schema({
         required: true,
         index: true
     },
-    businessName: {
-        type: String,
-        required: true,
-        trim: true,
-        maxlength: 200
-    },
     revenue: {
         type: Number,
         required: true,
@@ -50,11 +44,16 @@ const businessOverviewSchema = new Schema({
             message: 'Investments must be a non-negative number'
         }
     },
-    businessType: {
-        type: String,
-        enum: ['Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare', 'Education', 'Other'],
-        default: 'Other',
-        trim: true
+    transactionDate: {
+        type: Date,
+        required: true,
+        default: Date.now,
+        validate: {
+            validator: function(value) {
+                return value <= new Date();
+            },
+            message: 'Transaction date cannot be in the future'
+        }
     },
     notes: {
         type: String,
@@ -85,9 +84,7 @@ businessOverviewSchema.virtual('status').get(function() {
 });
 
 // Add indexes for better query performance
-businessOverviewSchema.index({ memberId: 1, createdAt: -1 });
-businessOverviewSchema.index({ businessType: 1 });
-businessOverviewSchema.index({ memberId: 1, businessType: 1 });
+businessOverviewSchema.index({ memberId: 1, transactionDate: -1 });
 
 // Pre-save middleware for logging
 businessOverviewSchema.pre('save', function(next) {

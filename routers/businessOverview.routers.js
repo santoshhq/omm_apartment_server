@@ -10,10 +10,7 @@ router.post('/', BusinessOverviewController.addBusiness);
 // 📊 Get Business Summary for a Member
 router.get('/', BusinessOverviewController.getBusinessSummary);
 
-// 📂 Get Businesses by Type for a Member
-router.get('/type/:businessType', BusinessOverviewController.getBusinessesByType);
-
-// 💰 Get Businesses by Status (Profit/Loss/Break-even) for a Member
+//  Get Businesses by Status (Profit/Loss/Break-even) for a Member
 router.get('/status/:status', BusinessOverviewController.getBusinessesByStatus);
 
 // 📈 Get Top Performing Businesses for a Member

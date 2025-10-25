@@ -7,15 +7,14 @@ class BusinessOverviewController {
             console.log('\n=== 🏢 ADD BUSINESS ENTRY CONTROLLER CALLED ===');
 
             // Get memberId from request body (required)
-            const { memberId, businessName, revenue, expenses, investments, businessType, notes } = req.body;
+            const { memberId, revenue, expenses, investments, transactionDate, notes } = req.body;
 
             console.log('📊 Business Details:');
             console.log('  - Member ID:', memberId);
-            console.log('  - Business Name:', businessName);
             console.log('  - Revenue:', revenue);
             console.log('  - Expenses:', expenses);
             console.log('  - Investments:', investments);
-            console.log('  - Business Type:', businessType);
+            console.log('  - Transaction Date:', transactionDate);
             console.log('  - Notes:', notes);
 
             // Validate required fields
@@ -26,10 +25,10 @@ class BusinessOverviewController {
                 });
             }
 
-            if (!businessName || revenue === undefined || expenses === undefined || investments === undefined) {
+            if (revenue === undefined || expenses === undefined || investments === undefined) {
                 return res.status(400).json({
                     success: false,
-                    message: 'businessName, revenue, expenses, and investments are required'
+                    message: 'revenue, expenses, and investments are required'
                 });
             }
 
@@ -61,11 +60,10 @@ class BusinessOverviewController {
 
             const result = await BusinessOverviewService.addBusiness({
                 memberId,
-                businessName,
                 revenue: numRevenue,
                 expenses: numExpenses,
                 investments: numInvestments,
-                businessType: businessType || 'Other',
+                transactionDate: transactionDate ? new Date(transactionDate) : new Date(),
                 notes: notes || ''
             });
 
@@ -129,62 +127,7 @@ class BusinessOverviewController {
         }
     }
 
-    // 📂 Get Businesses by Type
-    static async getBusinessesByType(req, res) {
-        try {
-            console.log('\n=== 📂 GET BUSINESSES BY TYPE CONTROLLER CALLED ===');
-
-            // Get memberId from query parameter
-            const memberId = req.query.memberId;
-            const { businessType } = req.params;
-
-            console.log('👤 Member ID:', memberId);
-            console.log('🏷️ Business Type:', businessType);
-
-            if (!memberId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'memberId is required as query parameter'
-                });
-            }
-
-            if (!businessType) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Business type is required'
-                });
-            }
-
-            // Validate business type
-            const validTypes = ['Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare', 'Education', 'Other'];
-            if (!validTypes.includes(businessType)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid business type. Must be one of: ' + validTypes.join(', ')
-                });
-            }
-
-            const businesses = await BusinessOverviewService.getBusinessesByType(memberId, businessType);
-
-            console.log(`✅ Retrieved ${businesses.length} ${businessType} businesses`);
-            return res.status(200).json({
-                success: true,
-                message: `${businessType} businesses retrieved successfully`,
-                data: businesses,
-                count: businesses.length,
-                businessType
-            });
-        } catch (error) {
-            console.error('❌ Error in getBusinessesByType controller:', error.message);
-            return res.status(500).json({
-                success: false,
-                message: 'Server error',
-                error: error.message
-            });
-        }
-    }
-
-    // 💰 Get Businesses by Status (Profit/Loss/Break-even)
+    //  Get Businesses by Status (Profit/Loss/Break-even)
     static async getBusinessesByStatus(req, res) {
         try {
             console.log('\n=== 💰 GET BUSINESSES BY STATUS CONTROLLER CALLED ===');

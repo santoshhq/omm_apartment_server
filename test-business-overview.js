@@ -12,40 +12,30 @@ const generateTestBusinessData = () => {
     const businesses = [
         // Profitable Businesses
         {
-            businessName: "Tech Startup Solutions",
-            businessType: "Technology",
             revenue: 250000,
             expenses: 180000,
             investments: 50000,
             notes: "Software development company - High growth potential"
         },
         {
-            businessName: "Green Grocery Store",
-            businessType: "Retail",
             revenue: 150000,
             expenses: 95000,
             investments: 25000,
             notes: "Organic food retail - Steady profits"
         },
         {
-            businessName: "Digital Marketing Agency",
-            businessType: "Services",
             revenue: 200000,
             expenses: 140000,
             investments: 30000,
             notes: "SEO and social media marketing services"
         },
         {
-            businessName: "Manufacturing Unit Alpha",
-            businessType: "Manufacturing",
             revenue: 300000,
             expenses: 220000,
             investments: 60000,
             notes: "Electronics manufacturing - Profitable operations"
         },
         {
-            businessName: "Healthcare Clinic Plus",
-            businessType: "Healthcare",
             revenue: 180000,
             expenses: 120000,
             investments: 40000,
@@ -54,24 +44,18 @@ const generateTestBusinessData = () => {
 
         // Loss Making Businesses
         {
-            businessName: "New Restaurant Venture",
-            businessType: "Services",
             revenue: 80000,
             expenses: 120000,
             investments: 45000,
             notes: "New restaurant - Initial losses expected"
         },
         {
-            businessName: "E-commerce Startup",
-            businessType: "Retail",
             revenue: 50000,
             expenses: 90000,
             investments: 35000,
             notes: "Online retail - Scaling phase losses"
         },
         {
-            businessName: "R&D Division Beta",
-            businessType: "Technology",
             revenue: 30000,
             expenses: 80000,
             investments: 55000,
@@ -80,16 +64,12 @@ const generateTestBusinessData = () => {
 
         // Break-even Businesses
         {
-            businessName: "Consulting Services Pro",
-            businessType: "Services",
             revenue: 120000,
             expenses: 90000,
             investments: 30000,
             notes: "Management consulting - Break-even point"
         },
         {
-            businessName: "Educational Center",
-            businessType: "Education",
             revenue: 100000,
             expenses: 75000,
             investments: 25000,
@@ -98,40 +78,30 @@ const generateTestBusinessData = () => {
 
         // Mixed Performance
         {
-            businessName: "Real Estate Development",
-            businessType: "Other",
             revenue: 500000,
             expenses: 350000,
             investments: 120000,
             notes: "Property development - High profit potential"
         },
         {
-            businessName: "Food Processing Unit",
-            businessType: "Manufacturing",
             revenue: 280000,
             expenses: 250000,
             investments: 40000,
             notes: "Food processing - Moderate profits"
         },
         {
-            businessName: "Mobile Repair Service",
-            businessType: "Services",
             revenue: 90000,
             expenses: 110000,
             investments: 15000,
             notes: "Mobile repair shop - Operational losses"
         },
         {
-            businessName: "Bookstore Chain",
-            businessType: "Retail",
             revenue: 160000,
             expenses: 130000,
             investments: 35000,
             notes: "Book retail - Steady profits"
         },
         {
-            businessName: "Fitness Center",
-            businessType: "Healthcare",
             revenue: 140000,
             expenses: 125000,
             investments: 20000,
@@ -143,6 +113,7 @@ const generateTestBusinessData = () => {
     return businesses.map((business, index) => ({
         ...business,
         memberId: TEST_MEMBER_ID,
+        transactionDate: new Date(Date.now() - (index * 15 * 24 * 60 * 60 * 1000)), // 15 days apart
         // Spread creation dates over the last 6 months
         createdAt: new Date(Date.now() - (index * 15 * 24 * 60 * 60 * 1000)) // 15 days apart
     }));
@@ -193,13 +164,12 @@ async function runBusinessOverviewTest() {
             else breakEvenBusinesses++;
 
             return {
-                name: business.businessName,
-                type: business.businessType,
                 revenue: business.revenue,
                 expenses: business.expenses,
                 investments: business.investments,
                 profitLoss,
-                status
+                status,
+                notes: business.notes
             };
         });
 
@@ -225,32 +195,14 @@ async function runBusinessOverviewTest() {
 
         const sortedByProfit = businessAnalysis.sort((a, b) => b.profitLoss - a.profitLoss);
         sortedByProfit.slice(0, 5).forEach((business, index) => {
-            console.log(`${index + 1}. ${business.name}`);
-            console.log(`   Type: ${business.type} | P&L: ₹${business.profitLoss.toLocaleString()} (${business.status})`);
-        });
-
-        console.log('\n📊 BUSINESS TYPE ANALYSIS:');
-        console.log('===========================');
-
-        const typeAnalysis = {};
-        businessAnalysis.forEach(business => {
-            if (!typeAnalysis[business.type]) {
-                typeAnalysis[business.type] = { count: 0, totalPL: 0 };
-            }
-            typeAnalysis[business.type].count++;
-            typeAnalysis[business.type].totalPL += business.profitLoss;
-        });
-
-        Object.keys(typeAnalysis).forEach(type => {
-            const analysis = typeAnalysis[type];
-            console.log(`${type}: ${analysis.count} businesses | Total P&L: ₹${analysis.totalPL.toLocaleString()}`);
+            console.log(`${index + 1}. ${business.notes}`);
+            console.log(`   P&L: ₹${business.profitLoss.toLocaleString()} (${business.status})`);
         });
 
         console.log('\n✅ Test completed successfully!');
         console.log('🎯 You can now test the API endpoints with memberId: ' + TEST_MEMBER_ID);
         console.log('\n📋 API Test URLs:');
         console.log(`   GET Summary: http://localhost:8080/api/business/?memberId=${TEST_MEMBER_ID}`);
-        console.log(`   GET by Type: http://localhost:8080/api/business/type/Technology?memberId=${TEST_MEMBER_ID}`);
         console.log(`   GET by Status: http://localhost:8080/api/business/status/Profit?memberId=${TEST_MEMBER_ID}`);
         console.log(`   GET Top Performing: http://localhost:8080/api/business/top-performing?memberId=${TEST_MEMBER_ID}&limit=3`);
         console.log(`   POST Business: http://localhost:8080/api/business/`);

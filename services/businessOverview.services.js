@@ -54,14 +54,13 @@ class BusinessOverviewService {
 
                 return {
                     _id: business._id,
-                    businessName: business.businessName,
-                    businessType: business.businessType,
                     revenue: business.revenue,
                     expenses: business.expenses,
                     investments: business.investments,
                     profitLoss,
                     status,
                     notes: business.notes,
+                    transactionDate: business.transactionDate,
                     createdAt: business.createdAt
                 };
             });
@@ -86,39 +85,7 @@ class BusinessOverviewService {
         }
     }
 
-    // 📂 Get Businesses by Type
-    static async getBusinessesByType(memberId, businessType) {
-        try {
-            const businesses = await BusinessOverview.find({
-                memberId,
-                businessType
-            }).sort({ createdAt: -1 });
-
-            const businessDetails = businesses.map(business => {
-                const profitLoss = business.revenue - business.expenses - business.investments;
-                const status = profitLoss > 0 ? 'Profit' : profitLoss < 0 ? 'Loss' : 'Break-even';
-
-                return {
-                    _id: business._id,
-                    businessName: business.businessName,
-                    businessType: business.businessType,
-                    revenue: business.revenue,
-                    expenses: business.expenses,
-                    investments: business.investments,
-                    profitLoss,
-                    status,
-                    notes: business.notes,
-                    createdAt: business.createdAt
-                };
-            });
-
-            return businessDetails;
-        } catch (error) {
-            throw new Error(`Failed to fetch businesses by type: ${error.message}`);
-        }
-    }
-
-    // 💰 Get Businesses by Profit/Loss Status
+    //  Get Businesses by Profit/Loss Status
     static async getBusinessesByStatus(memberId, status) {
         try {
             const businesses = await BusinessOverview.find({ memberId }).sort({ createdAt: -1 });
@@ -135,14 +102,13 @@ class BusinessOverviewService {
 
                 return {
                     _id: business._id,
-                    businessName: business.businessName,
-                    businessType: business.businessType,
                     revenue: business.revenue,
                     expenses: business.expenses,
                     investments: business.investments,
                     profitLoss,
                     status: businessStatus,
                     notes: business.notes,
+                    transactionDate: business.transactionDate,
                     createdAt: business.createdAt
                 };
             });
