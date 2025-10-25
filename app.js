@@ -78,4 +78,7 @@ app.use(`${API_PREFIX}/idcards`, idCardsRouter);
 const financialOverviewRouter = require('./routers/financialOverview.routers');
 app.use(`${API_PREFIX}/financial`, financialOverviewRouter);
 
+const businessOverviewRouter = require('./routers/businessOverview.routers');
+app.use(`${API_PREFIX}/business`, businessOverviewRouter);
+
 module.exports=app;

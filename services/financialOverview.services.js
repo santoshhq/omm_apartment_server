@@ -44,7 +44,7 @@ class FinancialOverviewService {
       });
 
       // 🧮 Final balance formula (Fixed: Savings should be added, not subtracted)
-      const balance = income - (expense + investment + donation) + savings;
+      const balance = income - (expense + investment + donation + savings);
 
       return {
         message: 'Transaction added successfully',
