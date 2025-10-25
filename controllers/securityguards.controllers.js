@@ -4,10 +4,15 @@ class SecurityGuardsController {
   static async createGuard(req, res) {
     console.log('\n=== 🛡️ CREATE SECURITY GUARD CONTROLLER CALLED ===');
     const { adminId } = req.params;
-    const { guardimage, firstname, lastname, mobilenumber, age, assigngates, gender } = req.body;
+    const { guardimage, firstname, lastname, mobilenumber, password, age, assigngates, gender } = req.body;
+
     console.log('🔑 Admin ID:', adminId);
     console.log('📝 Body:', { firstname, lastname, mobilenumber, age, assigngates, gender });
-    const result = await SecurityGuardService.createGuard(adminId, guardimage, firstname, lastname, mobilenumber, age, assigngates, gender);
+
+    const result = await SecurityGuardService.createGuard(
+      adminId, guardimage, firstname, lastname, mobilenumber, password, age, assigngates, gender
+    );
+
     console.log('🛡️ Create result:', result.status, result.message);
     res.status(result.status ? 201 : 400).json(result);
   }
@@ -47,6 +52,20 @@ class SecurityGuardsController {
     const result = await SecurityGuardService.deleteGuard(adminId, guardId);
     console.log('🛡️ Delete result:', result.status, result.message);
     res.status(result.status ? 200 : 404).json(result);
+  }
+
+  // 🔑 New: Guard login controller
+  static async guardLogin(req, res) {
+    console.log('\n=== 🛡️ SECURITY GUARD LOGIN CALLED ===');
+    const { mobilenumber, password } = req.body;
+
+    if (!mobilenumber || !password) {
+      return res.status(400).json({ status: false, message: 'Mobile number and password are required' });
+    }
+
+    const result = await SecurityGuardService.guardLogin(mobilenumber, password);
+    console.log('🛡️ Login result:', result.status, result.message);
+    res.status(result.status ? 200 : 400).json(result);
   }
 }
 

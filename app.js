@@ -81,4 +81,7 @@ app.use(`${API_PREFIX}/financial`, financialOverviewRouter);
 const businessOverviewRouter = require('./routers/businessOverview.routers');
 app.use(`${API_PREFIX}/business`, businessOverviewRouter);
 
+const visitorRouter = require('./routers/visitor.routers');
+app.use(`${API_PREFIX}/visitors`, visitorRouter);
+
 module.exports=app;

@@ -5,6 +5,8 @@ const socketIo = require('socket.io');
 const PORT = process.env.PORT || 8080;
 const db = require('./config/db');
 const Signup = require('./models/auth.models/signup');
+const Visitor = require('./models/visitor');
+const cron = require('node-cron');
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -20,6 +22,12 @@ const io = socketIo(server, {
 // Make io accessible to the app
 app.set('io', io);
 
+// Middleware to attach io to req
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
+
 // Track online users per complaint
 const onlineUsers = new Map(); // complaintId -> Set of user objects
 
@@ -30,6 +38,13 @@ io.on('connection', (socket) => {
     // Store user info on socket for easy access
     socket.userInfo = null;
     socket.currentComplaintId = null;
+
+    // Join gate room for guards
+    socket.on('join-gate', (data) => {
+        const { gateId, guardId } = data;
+        socket.join(`gate-${gateId}`);
+        console.log(`👮 Guard ${guardId} joined gate room: gate-${gateId}`);
+    });
 
     // Enhanced join complaint room with user tracking
     socket.on('join-complaint', (data) => {
@@ -161,4 +176,15 @@ server.listen(PORT, () => {
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📍 Server URL: http://localhost:${PORT}`);
     console.log(`🔌 Socket.io is ready for real-time messaging`);
+});
+
+// Cron job to expire pending visitors and clean up old approved records
+cron.schedule('0 * * * *', async () => {
+    console.log('⏰ Running visitor cleanup check...');
+    try {
+        await Visitor.expireOldApprovals();
+        console.log('✅ Visitor cleanup check completed');
+    } catch (error) {
+        console.error('❌ Error during visitor cleanup check:', error);
+    }
 });

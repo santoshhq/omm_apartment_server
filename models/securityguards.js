@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 const db = require('../config/db');
 const { Schema } = mongoose;
+const bcrypt = require('bcryptjs'); // for password hashing
 
 const securityGuardSchema = new Schema({
     adminId:{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'adminSignup',
         required: true,
-    
     },
     guardimage: {
         type: String,
@@ -35,6 +35,12 @@ const securityGuardSchema = new Schema({
         unique: true,
         match: [/^\d{10}$/, 'Invalid mobile number format'],    
     },
+    password: {
+        type: String,
+        required: true,
+        minlength: 6,
+        maxlength: 100,
+    },
     age: {
         type: Number,
         required: true,
@@ -51,8 +57,21 @@ const securityGuardSchema = new Schema({
         required: true,
         enum:['male','female','other']
     },
-
 });
-const securityGuard= db.model('securityGuard', securityGuardSchema);
 
-module.exports =  securityGuard ;
+// 🔑 Pre-save hook to hash password
+securityGuardSchema.pre('save', async function(next) {
+    if (this.isModified('password')) {
+        try {
+            const salt = await bcrypt.genSalt(10);
+            this.password = await bcrypt.hash(this.password, salt);
+        } catch (err) {
+            console.error('Error hashing password:', err);
+        }
+    }
+    next();
+});
+
+const securityGuard = db.model('securityGuard', securityGuardSchema);
+
+module.exports = securityGuard;

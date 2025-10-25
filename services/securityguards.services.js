@@ -1,13 +1,17 @@
 const securityGuard = require('../models/securityguards');
+const bcrypt = require('bcryptjs');
+
 class SecurityGuardService {
-    static async createGuard(adminId, guardimage, firstname, lastname, mobilenumber, age, assign, gender) {
+    static async createGuard(adminId, guardimage, firstname, lastname, mobilenumber, password, age, assign, gender) {
         try {
             if (!adminId) return { status: false, message: 'adminId is required' };
+
             // Check if guard with the same mobile number already exists for this admin
             const existingGuard = await securityGuard.findOne({ adminId, mobilenumber });
             if (existingGuard) {
                 return { status: false, message: 'Security guard with this mobile number already exists for this admin' };
             }
+
             // Compress image if present
             let processedImage = guardimage;
             if (guardimage && guardimage.startsWith('data:image/')) {
@@ -18,16 +22,19 @@ class SecurityGuardService {
                     console.log('Image compression failed:', err.message);
                 }
             }
+
             const newGuard = new securityGuard({
                 adminId,
                 guardimage: processedImage,
                 firstname,
                 lastname,
                 mobilenumber,
+                password, // Plain password, will be hashed by pre-save hook
                 age,
                 assigngates: assign,
                 gender
             });
+
             await newGuard.save();
             return { status: true, message: 'Security guard created successfully', data: newGuard };
         } catch (error) {
@@ -35,6 +42,7 @@ class SecurityGuardService {
             return { status: false, message: 'Error creating security guard' };
         }
     }
+
     static async getAllGuardsbyadminid(adminId) {
         try {
             if (!adminId) return { status: false, message: 'adminId is required' };
@@ -45,6 +53,7 @@ class SecurityGuardService {
             return { status: false, message: 'Error fetching security guards' };
         }
     }
+
     static async getGuardById(adminId, guardId) {
         try {
             if (!adminId) return { status: false, message: 'adminId is required' };
@@ -58,14 +67,17 @@ class SecurityGuardService {
             return { status: false, message: 'Error fetching security guard by ID' };
         }
     }
+
     static async updateGuard(adminId, guardId, updateData) {
         try {
             if (!adminId) return { status: false, message: 'adminId is required' };
+
             // Check if guard exists for this admin
             const existingGuard = await securityGuard.findOne({ _id: guardId, adminId });
             if (!existingGuard) {
                 return { status: false, message: 'Security guard not found' };
             }
+
             // If mobile number is being updated, check for uniqueness
             if (updateData.mobilenumber && updateData.mobilenumber !== existingGuard.mobilenumber) {
                 const mobileExists = await securityGuard.findOne({ mobilenumber: updateData.mobilenumber, adminId });
@@ -73,6 +85,7 @@ class SecurityGuardService {
                     return { status: false, message: 'Another security guard with this mobile number already exists for this admin' };
                 }
             }
+
             // Compress image if present
             if (updateData.guardimage && updateData.guardimage.startsWith('data:image/')) {
                 const compressBase64Image = require('../middleware/compressBase64Image');
@@ -82,12 +95,17 @@ class SecurityGuardService {
                     console.log('Image compression failed:', err.message);
                 }
             }
+
+            // Hash password if being updated
+            // Removed manual hashing - pre-save hook will handle it
+
             // Update guard details
             Object.keys(updateData).forEach(key => {
                 if (updateData[key] !== undefined) {
                     existingGuard[key] = updateData[key];
                 }
             });
+
             await existingGuard.save();
             return { status: true, message: 'Security guard updated successfully', data: existingGuard };
         } catch (error) {
@@ -95,6 +113,7 @@ class SecurityGuardService {
             return { status: false, message: 'Error updating security guard' };
         }
     }
+
     static async deleteGuard(adminId, guardId) {
         try {
             if (!adminId) return { status: false, message: 'adminId is required' };
@@ -109,5 +128,29 @@ class SecurityGuardService {
         }
     }
 
+    // 🔑 New: Guard login
+    static async guardLogin(mobilenumber, password) {
+        try {
+            const guard = await securityGuard.findOne({ mobilenumber });
+            if (!guard) {
+                return { status: false, message: 'Guard not found' };
+            }
+
+            const isMatch = await bcrypt.compare(password, guard.password);
+            if (!isMatch) {
+                return { status: false, message: 'Incorrect password' };
+            }
+
+            // Optionally remove password before sending response
+            const guardData = guard.toObject();
+            delete guardData.password;
+
+            return { status: true, message: 'Login successful', data: guardData };
+        } catch (error) {
+            console.error('Error during guard login:', error);
+            return { status: false, message: 'Error during login' };
+        }
+    }
 }
+
 module.exports = { SecurityGuardService };
